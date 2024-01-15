@@ -9,22 +9,62 @@
   ],
   "<pre-defined>": [
     ["http://example.com"],
+    ["https://example.com"],
     ["http://example.com/example/sub"],
+    ["https://example.com/example/sub"],
     ["http://example.com/example/sub?a=b"],
+    ["https://example.com/example/sub?a=b"],
     ["http://example.com/example/sub?a=b&c=12345"],
+    ["https://example.com/example/sub?a=b&c=12345"],
     ["http://example.com/example/sub?a=b&c=12345#asdf-asdf"],
-    ["http://example.com/example/sub#asdf-asdf"]
+    ["https://example.com/example/sub?a=b&c=12345#asdf-asdf"],
+    ["http://example.com/example/sub#asdf-asdf"],
+    ["https://example.com/example/sub#asdf-asdf"],
+    ["http://localhost:80/index.html"],
+    ["http://localhost:8080/index.html"],
+    ["http://127.0.0.1:80/index.html"],
+    ["http://127.0.0.1:8080/index.html"],
+    ["http://127.0.0.3:80/index.html"],
+    ["http://127.0.0.3:8080/index.html"],
+    ["http://10.0.0.1:8080/index.html"],
+    ["http://10.0.0.1"],
+    ["http://[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]:80/index.html"],
+    ["http://[1080:0:0:0:8:800:200C:417A]/index.html"],
+    ["http://[3ffe:2a00:100:7031::1]"],
+    ["http://[1080::8:800:200C:417A]/foo"],
+    ["http://[::192.9.5.5]/ipng"],
+    ["http://[::FFFF:129.144.52.38]:80/index.html"],
+    ["http://[2010:836B:4179::836B:4179]"]
   ],
-  "<uri-protocol>": [["http://"], ["https://"], ["ftp://"], ["file://"], ["<!string.component-string>", "://"]],
+  "<uri-protocol>": [
+    ["http://"],
+    ["https://"],
+    ["ftp://"],
+    ["ftps://"],
+    ["sftp://"],
+    ["file://"],
+    ["ssh://"],
+    ["<!string.letter>", "<!string.letter>", "<!string.letter>", "<!string.letter>", "://"],
+    ["<!string.letter>", "<!string.letter>", "<!string.letter>", "<!string.letter>", "<!string.letter>", "://"],
+    ["<!string.letter>", "<!string.letter>", "<!string.letter>", "<!string.letter>", "<!string.letter>", "://"],
+    ["<!string.component-string>", "://"]
+  ],
   "<uri-hostname>": [
     ["example.com"],
     ["sub.example.com"],
     ["subsub.sub.example.com"],
     ["a.b.c.d.f.g.h.i.j.k.example.com"],
-    ["<uri-hostname-1>"]
+    ["<uri-hostname-1>"],
+    ["<uri-ipv6>"],
+    ["<ipv4>"]
   ],
   "<uri-hostname-1>": [["<!string.component-string>"], ["<!string.component-string>", ".", "<uri-hostname-1>"]],
-  "<uri-location>": [["<!string.component-string>"], ["<!string.component-string>", "/", "<uri-location>"]],
+  "<uri-location>": [
+    ["<!string.component-string>"],
+    ["<!string.component-string>", "/", "<uri-location>"],
+    ["<!string.urlencoded>"],
+    ["<!string.urlencoded>", "/", "<uri-location>"]
+  ],
   "<uri-params>": [
     ["?", "<uri-params-pair>"],
     ["?", "<uri-params-pair>", "&", "<uri-params-pair>"],
@@ -34,5 +74,31 @@
   "<uri-params-pair>": [["<uri-params-key>", "=", "<uri-params-value>"]],
   "<uri-params-list>": [["<uri-params-pair>"], ["<uri-params-pair>", "&", "<uri-params-list>"]],
   "<uri-params-key>": [["<!string.urlencoded>"]],
-  "<uri-params-value>": [["<!string.base64>"], ["<!string.urlencoded>"]]
+  "<uri-params-value>": [["<!string.base64>"], ["<!string.urlencoded>"]],
+  "<ipv4>": [["<ipv4-num>", ".", "<ipv4-num>", ".", "<ipv4-num>", ".", "<ipv4-num>"]],
+  "<ipv4-num>": [["<!numbers.digit>", "<!numbers.digit>", "<!numbers.digit>"]],
+  "<uri-ipv6>": [["[", "<ipv6>", "]"]],
+  "<ipv6>": [["<ipv6-predefined>"], ["<ipv6-1>"], ["::", "<ipv4>"]],
+  "<ipv6-1>": [
+    ["<ipv6-component>"],
+    ["<ipv6-component>", ":", "<ipv6-1>"],
+    ["<ipv6-component>", "::", "<ipv6-component>"],
+    ["::", "<ipv6-1>"],
+    ["<ipv6-component>", ":", "<ipv4>"]
+  ],
+  "<ipv6-component>": [
+    ["<!numbers.hexdigit>", "<!numbers.hexdigit>", "<!numbers.hexdigit>", "<!numbers.hexdigit>"],
+    ["<!numbers.hexdigit>", "<!numbers.hexdigit>", "<!numbers.hexdigit>"],
+    ["<!numbers.hexdigit>", "<!numbers.hexdigit>"],
+    ["<!numbers.hexdigit>"]
+  ],
+  "<ipv6-predefined>": [
+    ["FEDC:BA98:7654:3210:FEDC:BA98:7654:3210"],
+    ["1080:0:0:0:8:800:200C:4171"],
+    ["3ffe:2a00:100:7031::1"],
+    ["1080::8:800:200C:417A"],
+    ["::192.9.5.5"],
+    ["::FFFF:129.144.52.38"],
+    ["2010:836B:4179::836B:4179"]
+  ]
 }

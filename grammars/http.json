@@ -202,7 +202,7 @@
     ["q=", "<!numbers.number>"]
   ],
   "<chunked-transfer-encoding>": [["Transfer-Encoding:", "<!string.spaces>", "chunked", "<newline>"]],
-  "<accept>": [["Accept:", "<!string.spaces>", "<accept-types>", "!<!string.spaces>", "<newline>"]],
+  "<accept>": [["Accept:", "<!string.spaces>", "<accept-types>", "<!string.spaces>", "<newline>"]],
   "<accept-types>": [["<accept-type>"], ["<accept-type>", ",", "<accept-type>"]],
   "<accept-type>": [["<mime-type-subtype>", ";", "<quality>"]],
   "<mime-type-subtype>": [
@@ -230,11 +230,11 @@
     ["<!string.string>", "/", "<!string.string>"]
   ],
   "<accept-charset>": [
-    ["<accept-charset-header-name>", "<!string.spaces>", ":", "!<!string.spaces>", "<charsets>", "<newline>"]
+    ["<accept-charset-header-name>", "<!string.spaces>", ":", "<!string.spaces>", "<charsets>", "<newline>"]
   ],
   "<accept-charset-header-name>": [["Accept-Charset"]],
-  "<charsets>": [["<charset>"], ["<charset>", "<!string.spaces>", ",", "!<!string.spaces>", "<charset>"]],
-  "<charset>": [["<charset-name>", "<!string.spaces>", ";", "!<!string.spaces>", "<quality>"]],
+  "<charsets>": [["<charset>"], ["<charset>", "<!string.spaces>", ",", "<!string.spaces>", "<charset>"]],
+  "<charset>": [["<charset-name>", "<!string.spaces>", ";", "<!string.spaces>", "<quality>"]],
   "<charset-name>": [
     ["utf-16"],
     ["utf-16BE"],
@@ -249,26 +249,26 @@
   "<encodings>": [["<encoding>"], ["<encoding>", ",", "<encoding>"]],
   "<encoding>": [["encoding-name"], ["<encoding-name>", ";", "<quality>"]],
   "<encoding-name>": [["gzip"], ["compress"], ["deflate"], ["br"], ["identity"], ["chunked"]],
-  "<accept-language>": [["Accept-Language", "<!string.spaces>", ":", "!<!string.spaces>", "<languages>", "<newline>"]],
+  "<accept-language>": [["Accept-Language", "<!string.spaces>", ":", "<!string.spaces>", "<languages>", "<newline>"]],
   "<languages>": [["<language>"], ["<language>", ",", "<language>"]],
   "<language>": [["<language-name>", ";", "<quality>"]],
   "<language-name>": [["fr"], ["en"], ["de"], ["<!string.lowercase>", "<!string.lowercase>"]],
-  "<accept-ranges>": [["Accept-Ranges", "<!string.spaces>", ":", "!<!string.spaces>", "<range-unit>", "<newline>"]],
+  "<accept-ranges>": [["Accept-Ranges", "<!string.spaces>", ":", "<!string.spaces>", "<range-unit>", "<newline>"]],
   "<range-unit>": [["bytes"], ["none"]],
   "<allow>": [
-    ["Allow", "<!string.spaces>", ":", "!<!string.spaces>", "<method-names>", "<newline>"],
-    ["Allow:", "!<!string.spaces>", "<method-names>", "<newline>"]
+    ["Allow", "<!string.spaces>", ":", "<!string.spaces>", "<method-names>", "<newline>"],
+    ["Allow:", "<!string.spaces>", "<method-names>", "<newline>"]
   ],
   "<method-names>": [["<method-name>"], ["<method-name>", ",", "<method-names>"]],
   "<alpn>": [
-    ["ALPN", "<!string.spaces>", ":", "!<!string.spaces>", "<protocol-ids>", "<newline>"],
-    ["ALPN:", "!<!string.spaces>", "<protocol-ids>", "<newline>"]
+    ["ALPN", "<!string.spaces>", ":", "<!string.spaces>", "<protocol-ids>", "<newline>"],
+    ["ALPN:", "<!string.spaces>", "<protocol-ids>", "<newline>"]
   ],
   "<protocol-ids>": [["<protocol-id>"], ["<protocol-id>", ",", "<protocol-id>"]],
   "<protocol-id>": [["http%2F1.1"], ["h2"], ["http%2F", "<http-version-nums>"]],
   "<alt-used>": [
-    ["Alt-Used", "<!string.spaces>", ":", "!<!string.spaces>", "<alt-svc>", "<newline>"],
-    ["Alt-Used:", "!<!string.spaces>", "<alt-svc>", "<newline>"]
+    ["Alt-Used", "<!string.spaces>", ":", "<!string.spaces>", "<alt-svc>", "<newline>"],
+    ["Alt-Used:", "<!string.spaces>", "<alt-svc>", "<newline>"]
   ],
   "<alt-svc>": [["<!url.url>"]],
   "<authorization>": [
@@ -277,9 +277,9 @@
       ":",
       "<!string.spaces>",
       "<auth-scheme>",
-      "!<!string.spaces>",
+      "<!string.spaces>",
       "<creds>",
-      "!<!string.spaces>",
+      "<!string.spaces>",
       "<newline>"
     ]
   ],
@@ -299,7 +299,7 @@
   "<cache-control>": [["Cache-Control:", "<!string.spaces>", "<cache-directives>", "<newline>"]],
   "<cache-directives>": [
     ["<cache-directive>"],
-    ["<cache-directive>", "<!string.spaces>", ",", "!<!string.spaces>", "<cache-directive>"]
+    ["<cache-directive>", "<!string.spaces>", ",", "<!string.spaces>", "<cache-directive>"]
   ],
   "<cache-directive>": [
     ["max-age=5"],
@@ -310,8 +310,8 @@
     ["no-transform"],
     ["only-if-cached"]
   ],
-  "<caldav-timezones>": [["CalDav-Timezones", "<!string.spaces>", ":", "!<!string.spaces>", "<boolean>", "<newline>"]],
-  "<cdn-loop>": [["CND-Loop", "<!string.spaces>", ":", "!<!string.spaces>", "<cdn-infos>", "<newline>"]],
+  "<caldav-timezones>": [["CalDav-Timezones", "<!string.spaces>", ":", "<!string.spaces>", "<boolean>", "<newline>"]],
+  "<cdn-loop>": [["CND-Loop", "<!string.spaces>", ":", "<!string.spaces>", "<cdn-infos>", "<newline>"]],
   "<cdn-infos>": [["<cdn-info>"], ["<cdn-info>", ",", "<cdn-info>"]],
   "<cdn-info>": [
     ["foo123.foocdn.example"],
@@ -321,10 +321,10 @@
     ["<!url.uri-hostname>", ";", "a=1"]
   ],
   "<content-encoding>": [
-    ["Content-Encoding", "<!string.spaces>", ":", "!<!string.spaces>", "<transfer-encodings>", "<newline>"]
+    ["Content-Encoding", "<!string.spaces>", ":", "<!string.spaces>", "<transfer-encodings>", "<newline>"]
   ],
   "<content-language>": [
-    ["Content-Language", "<!string.spaces>", ":", "!<!string.spaces>", "<languages>", "<newline>"]
+    ["Content-Language", "<!string.spaces>", ":", "<!string.spaces>", "<languages>", "<newline>"]
   ],
   "<content-length>": [
     ["Content-Length: 200\r\n"],
@@ -332,15 +332,15 @@
     ["Content-Length: ", "<!numbers.number>", "\r\n"]
   ],
   "<content-location>": [
-    ["Content-Location", "<!string.spaces>", ":", "!<!string.spaces>", "<content-location-value>", "<newline>"]
+    ["Content-Location", "<!string.spaces>", ":", "<!string.spaces>", "<content-location-value>", "<newline>"]
   ],
   "<content-location-value>": [["<absolute-uri>"], ["<relative-uri>"]],
   "<absolute-uri>": [["<!url.url>"]],
   "<relative-uri>": [["/example"], ["<!url.uri-location>"]],
-  "<cookie>": [["Cookie", "<!string.spaces>", ":", "!<!string.spaces>", "<cookie-list>", "<newline>"]],
+  "<cookie>": [["Cookie", "<!string.spaces>", ":", "<!string.spaces>", "<cookie-list>", "<newline>"]],
   "<cookie-list>": [
     ["<cookie-value>"],
-    ["<cookie-value>", "<!string.spaces>", ";", "!<!string.spaces>", "<cookie-list>"]
+    ["<cookie-value>", "<!string.spaces>", ";", "<!string.spaces>", "<cookie-list>"]
   ],
   "<cookie-value>": [
     ["SID=31d4d96e407aad42"],
@@ -481,7 +481,7 @@
   "<time-units>": [["Seconds", "Hours", "Days"]],
   "<topic>": [["Topic:", "<!string.spaces>", "<topic-value>", "<newline>"]],
   "<topic-value>": [["upd"], ["<!string.string>"]],
-  "<trailer>": [["Trailer:", "<!string.spaces>", "<trailer-value>", "!<!string.spaces>", "<newline>"]],
+  "<trailer>": [["Trailer:", "<!string.spaces>", "<trailer-value>", "<!string.spaces>", "<newline>"]],
   "<trailer-value>": [["<http-header-names>"], ["<!string.component-string>"]],
   "<transfer-encoding>": [
     ["Transfer-Encoding: chunked\r\n"],
@@ -524,7 +524,7 @@
   "<x-cache>": [["X-Cache: HIT\r\n"], ["X-Cache", "<!string.string>", "<newline>"]],
   "<age>": [["Age", "<!string.spaces>", ":", "<!string.spaces>", "<!numbers.number>", "<newline>"]],
   "<random-header>": [
-    ["<!string.component-string>", "<!string.spaces>", ":", "!<!string.spaces>", "<!string.string>", "<newline>"]
+    ["<!string.component-string>", "<!string.spaces>", ":", "<!string.spaces>", "<!string.string>", "<newline>"]
   ],
   "<valid-status-code>": [
     ["100 Continue"],

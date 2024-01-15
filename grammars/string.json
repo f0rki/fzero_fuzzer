@@ -116,6 +116,7 @@
     ["}"],
     ["~"]
   ],
+  "<letter>": [["<uppercase>"], ["<lowercase>"]],
   "<whitespace>": [[" "], ["\t"]],
   "<whitespace-lines>": [[" "], ["\t"], ["\r"], ["\n"]],
   "<chars>": [["<lowercase>"], ["<uppercase>"], ["<digit>"], ["<quotes>"], ["<special-chars>"], [" "], ["\t"]],
