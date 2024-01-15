@@ -1,0 +1,6 @@
+{
+  "json": { "preferSingleLine": true },
+  "includes": ["**/*.json"],
+  "excludes": ["**/node_modules", "**/*-lock.json"],
+  "plugins": ["https://plugins.dprint.dev/json-0.17.1.wasm"]
+}
