@@ -15,7 +15,7 @@
     ["http://example.com/example/sub?a=b&c=12345#asdf-asdf"],
     ["http://example.com/example/sub#asdf-asdf"]
   ],
-  "<uri-protocol>": [["http://"], ["https://"], ["ftp://"], ["file://"]],
+  "<uri-protocol>": [["http://"], ["https://"], ["ftp://"], ["file://"], ["<!string.component-string>", "://"]],
   "<uri-hostname>": [
     ["example.com"],
     ["sub.example.com"],
