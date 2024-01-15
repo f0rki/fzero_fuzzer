@@ -2,11 +2,10 @@
   "<start>": [["<uri-start>"]],
   "<uri-start>": [
     ["<pre-defined>"],
-    ["<uri-protocol>", "<uri-hostname>", "<uri-location>"],
-    ["<uri-protocol>", "<uri-hostname>", "<uri-location>", "<uri-params>"]
+    ["<uri-protocol>", "<uri-hostname>", "/", "<uri-location>"],
+    ["<uri-protocol>", "<uri-hostname>", "/", "<uri-location>", "<uri-params>"]
   ],
   "<pre-defined>": [
-    ["http://example.com"],
     ["http://example.com"],
     ["http://example.com/example/sub"],
     ["http://example.com/example/sub?a=b"],
@@ -18,6 +17,7 @@
   "<uri-hostname>": [
     ["example.com"],
     ["sub.example.com"],
+    ["subsub.sub.example.com"],
     ["a.b.c.d.f.g.h.i.j.k.example.com"],
     ["<component-string>"],
     ["<uri-hostname-1>"]
@@ -154,8 +154,9 @@
   ],
   "<string>": [
     ["<chars>"],
+    ["<chars>", "<string>"],
     ["<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>"],
-    ["<chars>", "<string>"]
+    ["<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<string>"]
   ],
   "<base64>": [["ZXhhbXBsZQo="], ["QUFBQUFBQUFBQUFBQUFBQUFBQUEK"], ["<base64-1>"]],
   "<b64-chars>": [["<lowercase>"], ["<uppercase>"], ["<single-digit>"], ["+"], ["/"]],
@@ -171,6 +172,9 @@
     ["<urlencoded-chars>"],
     ["<urlencoded-chars>", "<urlencoded>"],
     [
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
       "<urlencoded-chars>",
       "<urlencoded-chars>",
       "<urlencoded-chars>",
