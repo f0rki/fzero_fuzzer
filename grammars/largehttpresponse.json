@@ -189,11 +189,10 @@
     ["<upgrade>"],
     ["<user-agent>"],
     ["<via>"],
-    ["<content-type>"],
-    ["<server>"],
-    ["<last-modified>"],
-    ["<random-header>"]
+    ["<random-header>"],
+    ["<response-headers>"]
   ],
+  "<response-headers>": [["<content-type>"], ["<server>"], ["<last-modified>"], ["<vary>"], ["<x-cache>"], ["<age>"]],
   "<http-header-names>": [
     ["Accept"],
     ["Accept-Charset"],
@@ -603,6 +602,9 @@
   ],
   "<content-type>": [["Content-Type", "<spaces>", ":", "<spaces>", "<mime-type-subtype>", "<newline>"]],
   "<server>": [["Server", "<spaces>", ":", "<spaces>", "<string>", "<newline>"]],
+  "<vary>": [["Vary", "<spaces>", ":", "<spaces>", "<http-header-names>", "<newline>"]],
+  "<x-cache>": [["X-Cache: HIT\r\n"], ["X-Cache", "<string>", "<newline>"]],
+  "<age>": [["Age", "<spaces>", ":", "<spaces>", "<digits>", "<newline>"]],
   "<digits>": [
     ["0"],
     ["1"],
@@ -662,12 +664,16 @@
   "<other-integer-formats>": [
     ["0xdeadbeef"],
     ["0DEADBEEF"],
+    ["0xDEADBEEF"],
+    ["0XDEADBEEF"],
     ["0_1234_45667"],
     ["1.0"],
     ["2.3"],
     ["-1"],
+    ["- 1"],
     ["-1.0"],
-    ["-9"]
+    ["-9"],
+    ["-", "<edge-case-integer>"]
   ],
   "<single-digit>": [["0"], ["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"], ["9"]],
   "<digit-1>": [["<single-digit>"], ["<single-digit>", "<digit-1>"]],
