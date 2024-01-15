@@ -1,12 +1,12 @@
 use fzero_gen::*;
 
 fn main() -> std::io::Result<()> {
-    env_logger::init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
     // Get access to the command line arguments
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 4 {
-        log::warn!("usage: fzero <grammar json> <output Rust file> <default max depth>");
+    if !(3..=4).contains(&args.len()) {
+        log::warn!("usage: fzero <grammar json> <output Rust file> [default max depth]");
         return Ok(());
     }
 
@@ -25,7 +25,10 @@ fn main() -> std::io::Result<()> {
     // Generate a Rust application
     gram.program(
         &args[2],
-        args[3].parse().expect("Invalid digit in max depth"),
+        args.get(3)
+            .unwrap_or(&("256".to_string()))
+            .parse()
+            .expect("Invalid digit in max depth"),
     );
     log::info!("Generated Rust source file");
 
