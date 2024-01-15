@@ -3,6 +3,8 @@ use std::collections::HashSet;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+mod builtins;
+
 /// Representation of a grammar file in a Rust structure. This allows us to
 /// use Serde to serialize and deserialize the json grammar files
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -53,18 +55,26 @@ pub struct GrammarRust {
     /// thus this is by default set to `false`. Feel free to set it to `true` if
     /// you are concerned.
     pub safe_only: bool,
-
-    pub generate_main: bool,
 }
 
 impl GrammarRust {
     /// Create a new Rust version of a `Grammar` which was loaded via a
     /// grammar json specification.
     pub fn new(grammar: &Grammar, start_fragment: Option<&str>) -> Self {
+        let start_fragment = start_fragment.unwrap_or("<start>");
+
+        let mut ret = Self::construct(grammar);
+
+        // Resolve the start node
+        ret.start = Some(ret.name_to_fragment[start_fragment]);
+
+        ret
+    }
+
+    fn construct(grammar: &Grammar) -> Self {
         // Create a new grammar structure
         let mut ret = GrammarRust::default();
         ret.safe_only = false;
-        ret.generate_main = false;
 
         // Parse the input grammar to resolve all fragment names
         for (non_term, _) in grammar.0.iter() {
@@ -103,7 +113,13 @@ impl GrammarRust {
                         // non-terminal fragment and should be allocated as
                         // such
                         ret.allocate_fragment(Fragment::NonTerminal(vec![non_terminal]))
+                    } else if let Some(id) = builtins::load_if_builtin(option, &mut ret) {
+                        id
                     } else {
+                        if option.starts_with("<") && option.ends_with(">") {
+                            log::warn!("using a string that looks like a rule identifier ({:?}) as byte literal; check whether your grammar is correct!", option);
+                        }
+
                         // Convert the terminal bytes into a vector and
                         // create a new fragment containing it
                         ret.allocate_fragment(Fragment::Terminal(option.as_bytes().to_vec()))
@@ -124,11 +140,6 @@ impl GrammarRust {
             // Overwrite the terminal definition
             *fragment = Fragment::NonTerminal(variants);
         }
-
-        let start_fragment = start_fragment.or(Some("<start>")).unwrap();
-
-        // Resolve the start node
-        ret.start = Some(ret.name_to_fragment[start_fragment]);
 
         ret
     }
@@ -383,4 +394,17 @@ impl GrammarGenerator {{
         // Write out the test application
         std::fs::write(path, program).expect("Failed to create output Rust application");
     }
+}
+
+pub fn generate_lib_from_grammar(
+    grammar_file: impl AsRef<std::path::Path>,
+    output_file: impl AsRef<std::path::Path>,
+    default_max_depth: Option<usize>,
+) -> std::io::Result<()> {
+    let grammar: Grammar = serde_json::from_slice(&std::fs::read(grammar_file)?)?;
+    let mut gram = GrammarRust::new(&grammar, None);
+    gram.optimize();
+    gram.program(output_file, default_max_depth.unwrap_or(128));
+
+    Ok(())
 }

@@ -1,10 +1,20 @@
 {
   "<start>": [["<request-line>", "<headers-start>", "<body-start>"]],
-  "<request-line>": [["<method-name>", " ", "<spaces>", "<uri-start>", " ", "<spaces>", "<http-version>", "<newline>"]],
+  "<request-line>": [
+    ["<method-name>", " ", "<spaces>", "<uri-start>", " ", "<spaces>", "<http-version>", "<spaces>", "<newline>"]
+  ],
   "<method-name>": [["GET"], ["HEAD"], ["POST"], ["PUT"], ["DELETE"], ["CONNECT"], ["OPTIONS"], ["TRACE"]],
-  "<spaces>": [[], [" "], [" ", "<spaces>"]],
+  "<spaces>": [[], [" "], ["    "], ["         "], [" ", "<spaces>"]],
   "<http-version>": [["HTTP/", "<http-version-nums>"]],
-  "<http-version-nums>": [["0.9"], ["1.0"], ["1.1"], ["2.0"], ["3.0"]],
+  "<http-version-nums>": [
+    ["0.9"],
+    ["1.0"],
+    ["1.1"],
+    ["2.0"],
+    ["3.0"],
+    ["<single-digit>", ".", "<single-digit>"],
+    ["<digits>", ".", "<digits>"]
+  ],
   "<newline>": [["\r\n"]],
   "<uri-start>": [
     ["http://example.com"],
@@ -17,7 +27,7 @@
     ["<uri-protocol>", "<uri-hostname>", "<uri-location>"],
     ["<uri-protocol>", "<uri-hostname>", "<uri-location>", "<uri-params>"]
   ],
-  "<uri-protocol>": [["http://"], ["https://"], ["ftp://"], ["file://"]],
+  "<uri-protocol>": [["http://"], ["https://"], ["ftp://"], ["file://"], ["<component-string>", "://"]],
   "<uri-hostname>": [
     ["example.com"],
     ["sub.example.com"],
@@ -195,7 +205,7 @@
   "<boolean>": [["T"], ["F"]],
   "<quality>": [["q=1.0"], ["q=0.0"], ["q=", "<digits>", ".", "<digits>"], ["q=", "<digits>"]],
   "<chunked-transfer-encoding>": [["Transfer-Encoding:", "<spaces>", "chunked", "<newline>"]],
-  "<accept>": [["Accept:", "<accept-types>", "<newline>"]],
+  "<accept>": [["Accept:", "<spaces>", "<accept-types>", "<spaces>", "<newline>"]],
   "<accept-types>": [["<accept-type>"], ["<accept-type>", ",", "<accept-type>"]],
   "<accept-type>": [["<mime-type-subtype>", ";", "<quality>"]],
   "<mime-type-subtype>": [
@@ -217,10 +227,10 @@
     ["text/html"],
     ["video/mp4"]
   ],
-  "<accept-charset>": [["<accept-charset-header-name>", ":", "<spaces>", "<charsets>", "<newline>"]],
+  "<accept-charset>": [["<accept-charset-header-name>", "<spaces>", ":", "<spaces>", "<charsets>", "<newline>"]],
   "<accept-charset-header-name>": [["Accept-Charset"]],
-  "<charsets>": [["<charset>"], ["<charset>", ",", "<charset>"]],
-  "<charset>": [["<charset-name>", ";", "<quality>"]],
+  "<charsets>": [["<charset>"], ["<charset>", "<spaces>", ",", "<spaces>", "<charset>"]],
+  "<charset>": [["<charset-name>", "<spaces>", ";", "<spaces>", "<quality>"]],
   "<charset-name>": [
     ["utf-16"],
     ["utf-16BE"],
@@ -231,25 +241,24 @@
     ["utf-7"],
     ["utf-8"]
   ],
-  "<accept-encoding>": [["Accept-Encoding:", "<encodings>", "<newline>"]],
+  "<accept-encoding>": [["Accept-Encoding:", "<spaces>", "<encodings>", "<newline>"]],
   "<encodings>": [["<encoding>"], ["<encoding>", ",", "<encoding>"]],
   "<encoding>": [["encoding-name"], ["<encoding-name>", ";", "<quality>"]],
   "<encoding-name>": [["gzip"], ["compress"], ["deflate"], ["br"], ["identity"], ["chunked"]],
-  "<accept-language>": [["Accept-Language:", "<languages>", "<newline>"]],
+  "<accept-language>": [["Accept-Language", "<spaces>", ":", "<spaces>", "<languages>", "<newline>"]],
   "<languages>": [["<language>"], ["<language>", ",", "<language>"]],
   "<language>": [["<language-name>", ";", "<quality>"]],
   "<language-name>": [["fr"], ["en"], ["de"], ["<lowercase>", "<lowercase>"]],
-  "<accept-ranges>": [["Accept-Ranges:", "<range-unit>", "<newline>"]],
+  "<accept-ranges>": [["Accept-Ranges", "<spaces>", ":", "<spaces>", "<range-unit>", "<newline>"]],
   "<range-unit>": [["bytes"], ["none"]],
-  "<allow>": [["Allow:", "<method-names>", "<newline>"], ["Allow:", "<spaces>", "<method-names>", "<newline>"]],
+  "<allow>": [["Allow", "<spaces>", ":", "<spaces>", "<method-names>", "<newline>"], ["Allow:", "<spaces>", "<method-names>", "<newline>"]],
   "<method-names>": [["<method-name>"], ["<method-name>", ",", "<method-name>"]],
-  "<alpn>": [["ALPN:", "<protocol-ids>", "<newline>"], ["ALPN:", "<spaces>", "<protocol-ids>", "<newline>"]],
+  "<alpn>": [["ALPN",  "<spaces>", ":", "<spaces>",, "<protocol-ids>", "<newline>"], ["ALPN:", "<spaces>", "<protocol-ids>", "<newline>"]],
   "<protocol-ids>": [["<protocol-id>"], ["<protocol-id>", ",", "<protocol-id>"]],
   "<protocol-id>": [["http%2F1.1"], ["h2"], ["http%2F", "<http-version-nums>"]],
-  "<alt-used>": [["Alt-Used:", "<alt-svc>", "<newline>"], ["Alt-Used:", "<spaces>", "<alt-svc>", "<newline>"]],
+  "<alt-used>": [["Alt-Used", "<spaces>", ":", "<spaces>", "<alt-svc>", "<newline>"], ["Alt-Used:", "<spaces>", "<alt-svc>", "<newline>"]],
   "<alt-svc>": [["<uri-start>"]],
-  "<authorization>": [["<authorization-header-name>", ":", "<spaces>", "<auth-scheme>", " ", "<creds>", "<newline>"]],
-  "<authorization-header-name>": [["Authorization"]],
+  "<authorization>": [["Authorization", ":", "<spaces>", "<auth-scheme>", "<spaces>", "<creds>", "<spaces>", "<newline>"]],
   "<auth-scheme>": [
     ["Basic"],
     ["Bearer"],
@@ -264,7 +273,7 @@
   ],
   "<creds>": [["123456"], ["YWxhZGRpbjpvcGVuc2VzYW1l"], ["<base64>"]],
   "<cache-control>": [["Cache-Control:", "<spaces>", "<cache-directives>", "<newline>"]],
-  "<cache-directives>": [["<cache-directive>"], ["<cache-directive>", ",", "<cache-directive>"]],
+  "<cache-directives>": [["<cache-directive>"], ["<cache-directive>", "<spaces>", ",","<spaces>", "<cache-directive>"]],
   "<cache-directive>": [
     ["max-age=5"],
     ["max-stale=5"],
@@ -274,9 +283,8 @@
     ["no-transform"],
     ["only-if-cached"]
   ],
-  "<caldav-timezones>": [["<caldav-timezones-header-name>", ":", "<spaces>", "<boolean>", "<newline>"]],
-  "<caldav-timezones-header-name>": [["CalDav-Timezones"]],
-  "<cdn-loop>": [["CND-Loop:", "<spaces>", "<cdn-infos>", "<newline>"]],
+  "<caldav-timezones>": [["CalDav-Timezones", "<spaces>", ":", "<spaces>", "<boolean>", "<newline>"]],
+  "<cdn-loop>": [["CND-Loop","<spaces>", ":", "<spaces>", "<cdn-infos>", "<newline>"]],
   "<cdn-infos>": [["<cdn-info>"], ["<cdn-info>", ",", "<cdn-info>"]],
   "<cdn-info>": [
     ["foo123.foocdn.example"],
@@ -284,20 +292,19 @@
     ["AnotherCDN; abc=123; def=\"456\""],
     ["<uri-hostname>"]
   ],
-  "<content-encoding>": [["Content-Encoding:", "<spaces>", "<transfer-encodings>", "<newline>"]],
-  "<content-language>": [["Content-Language:", "<spaces>", "<languages>", "<newline>"]],
+  "<content-encoding>": [["Content-Encoding","<spaces>", ":", "<spaces>", "<transfer-encodings>", "<newline>"]],
+  "<content-language>": [["Content-Language","<spaces>", ":",  "<spaces>", "<languages>", "<newline>"]],
   "<content-length>": [
     ["Content-Length: 200\r\n"],
     ["Content-Length: 0\r\n"],
     ["Content-Length: ", "<digits>", "\r\n"]
   ],
-  "<content-location>": [["<content-location-header-name>", ":", "<spaces>", "<content-location-value>", "<newline>"]],
-  "<content-location-header-name>": [["Content-Location"]],
+  "<content-location>": [["Content-Location", "<spaces>", ":","<spaces>", "<content-location-value>", "<newline>"]],
   "<content-location-value>": [["<absolute-uri>"], ["<relative-uri>"]],
   "<absolute-uri>": [["http://example.com/example"], ["<uri-start>"]],
   "<relative-uri>": [["/example"], ["<uri-location>"]],
-  "<cookie>": [["Cookie:", "<spaces>", "<cookie-list>", "<newline>"]],
-  "<cookie-list>": [["<cookie-value>"], ["<cookie-value>", "; ", "<cookie-list>"]],
+  "<cookie>": [["Cookie","<spaces>", ":","<spaces>", "<cookie-list>", "<newline>"]],
+  "<cookie-list>": [["<cookie-value>"], ["<cookie-value>", "<spaces>", ";", "<spaces>", "<cookie-list>"]],
   "<cookie-value>": [
     ["SID=31d4d96e407aad42"],
     ["PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"],

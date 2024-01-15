@@ -6,19 +6,19 @@ fn main() -> std::io::Result<()> {
     println!("cargo:rerun-if-changed={}", gfile);
 
     let grammar: Grammar = serde_json::from_slice(&std::fs::read(gfile)?)?;
-    println!("Loaded grammar json");
+    println!("Loaded grammar from json.");
 
     // Convert the grammar file to the Rust structures
     let mut gram = GrammarRust::new(&grammar, None);
-    println!("Converted grammar to binary format");
+    println!("Created new code generator.");
 
     // Optimize the grammar
     gram.optimize();
-    println!("Optimized grammar");
+    println!("Optimized grammar.");
 
     // Generate a Rust application
     gram.program("./src/generator.rs", 128);
-    println!("Generated Rust source file");
+    println!("Generated Rust source file.");
 
     Ok(())
 }
