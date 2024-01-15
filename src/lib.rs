@@ -30,6 +30,9 @@ pub enum Fragment {
     /// A fragment which does nothing. This is used during optimization passes
     /// to remove fragments with no effect.
     Nop,
+
+    /// A fragment that is not reachable
+    Unreachable,
 }
 
 /// A grammar representation in Rust that is designed to be easy to work with
@@ -200,12 +203,44 @@ impl GrammarRust {
                             });
                         }
                     }
-                    Fragment::Terminal(_) | Fragment::Nop => {
+                    Fragment::Terminal(_) | Fragment::Nop | Fragment::Unreachable => {
                         // Already maximally optimized
                     }
                 }
             }
         }
+
+        // only keep reachable fragments around
+        let mut new_fragments = Vec::with_capacity(self.fragments.len());
+        // initialize all fragments as Nop fragments
+        new_fragments.resize(self.fragments.len(), Fragment::Unreachable);
+        let mut seen_fragments = BTreeSet::new();
+        let mut worklist = vec![self.start.unwrap()];
+
+        // iterate over all fragments and only keep the ones that are reachable
+        while !worklist.is_empty() {
+            let idx = worklist.pop().unwrap().0;
+            if seen_fragments.contains(&idx) {
+                continue;
+            }
+            new_fragments[idx] = self.fragments[idx].clone();
+            seen_fragments.insert(idx);
+            match &self.fragments[idx] {
+                Fragment::NonTerminal(options) => {
+                    worklist.extend(options.iter().cloned());
+                }
+                Fragment::Expression(expr) => {
+                    worklist.extend(expr.iter().cloned());
+                }
+                Fragment::Terminal(_) | Fragment::Nop => {
+                    // do nothing
+                }
+
+                Fragment::Unreachable => unreachable!("unreachable fragment reached!!!"),
+            }
+        }
+
+        self.fragments = new_fragments;
     }
 
     /// Generate a new Rust program that can be built and will generate random
@@ -264,6 +299,10 @@ impl GrammarGenerator {{
 
         // Go through each fragment in the list of fragments
         for (id, fragment) in self.fragments.iter().enumerate() {
+            if matches!(fragment, Fragment::Unreachable) {
+                continue;
+            }
+
             // Create a new function for this fragment
             program += &format!("    fn fragment_{}(depth: usize, max_depth: usize, buf: &mut Vec<u8>, rng: &mut impl Rng) {{\n", id);
 
@@ -329,6 +368,7 @@ impl GrammarGenerator {{
                     }
                 }
                 Fragment::Nop => {}
+                Fragment::Unreachable => {}
             }
 
             program += "    }\n";
