@@ -1,12 +1,21 @@
 # Intro
 
 `fzero` is a grammar-based fuzzer that generates a Rust application inspired
-by the paper "Building Fast Fuzzers" by Rahul Gopinath and Andreas Zeller.
-https://arxiv.org/pdf/1911.07707.pdf
+by the paper "Building Fast Fuzzers" by Rahul Gopinath and Andreas Zeller
+([paper](https://arxiv.org/pdf/1911.07707.pdf), [code](https://github.com/vrthra/F1))
+It was originally developed by
+[gamozolabs](https://github.com/gamozolabs/fzero_fuzzer) as a PoC that showed
+out to be faster than the F1 fuzzer.
 
-You can find the F1 fuzzer here:
+This is a fork that makes fzero usable as a library in other rust projects
+(e.g., libafl) and not only as a standalone binary. Furthermore, it provides
+a bunch of default grammars and several convenience functions.
 
-https://github.com/vrthra/F1
+
+-----
+
+*Original readme*
+
 
 # Usage
 

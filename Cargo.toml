@@ -1,7 +1,7 @@
 [package]
 name = "fzero"
 version = "0.2.0"
-authors = ["Brandon Falk <bfalk@gamozolabs.com>"]
+authors = ["Brandon Falk <bfalk@gamozolabs.com>", "Michael Rodler <m@mrodler.eu>"]
 edition = "2018"
 license = "MIT"
 
