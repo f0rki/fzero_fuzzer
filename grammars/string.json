@@ -84,16 +84,13 @@
     ["E"],
     ["F"]
   ],
-  "<chars>": [
-    ["<lowercase>"],
-    ["<uppercase>"],
-    ["<digit>"],
+  "<quotes>": [["\""], ["'"]],
+  "<special-chars>": [
     ["!"],
     ["#"],
     ["$"],
     ["%"],
     ["&"],
-    ["\""],
     ["("],
     [")"],
     ["*"],
@@ -117,9 +114,11 @@
     ["{"],
     ["|"],
     ["}"],
-    ["~"],
-    [" "]
+    ["~"]
   ],
+  "<whitespace>": [[" "], ["\t"]],
+  "<whitespace-lines>": [[" "], ["\t"], ["\r"], ["\n"]],
+  "<chars>": [["<lowercase>"], ["<uppercase>"], ["<digit>"], ["<quotes>"], ["<special-chars>"], [" "], ["\t"]],
   "<string>": [
     ["<chars>"],
     ["<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>"],
@@ -130,6 +129,21 @@
   "<b64-chars>": [["<lowercase>"], ["<uppercase>"], ["<!numbers.digit>"], ["+"], ["/"]],
   "<b64-padding>": [["="], ["=="]],
   "<base64>": [["<b64-chars>"], ["<b64-chars>", "<b64-padding>"], ["<b64-chars>", "<base64>"]],
+  "<varname-string>": [["<lowercase>", "<varname-string-1>"], ["<uppercase>", "<varname-string-1>"]],
+  "<varname-string-1>": [
+    [],
+    ["<varname-string-chars>"],
+    ["<varname-string-chars>", "<varname-string-1>"],
+    [
+      "<varname-string-chars>",
+      "<varname-string-chars>",
+      "<varname-string-chars>",
+      "<varname-string-chars>",
+      "<varname-string-chars>",
+      "<varname-string-1>"
+    ]
+  ],
+  "<varname-string-chars>": [["<lowercase>"], ["<uppercase>"], ["<!numbers.digit>"], ["_"]],
   "<component-string>": [["<lowercase>", "<component-string-1>"], ["<uppercase>", "<component-string-1>"]],
   "<component-string-1>": [
     [],
@@ -145,6 +159,12 @@
     ]
   ],
   "<component-string-chars>": [["<lowercase>"], ["<uppercase>"], ["<!numbers.digit>"], ["-"]],
+  "<escaped-string-contents>": [
+    ["<lowercase>"],
+    ["<uppercase>"],
+    ["<!numbers.digit>"],
+    ["\\x", "<!numbers.hexdigit>", "<!numbers.hexdigit>"]
+  ],
   "<urlencoded-chars>": [["<lowercase>"], ["<uppercase>"], ["<!numbers.digit>"], ["-"], ["<urlencoded-percent>"]],
   "<urlencoded-percent>": [["%", "<!numbers.hexdigit>", "<!numbers.hexdigit>"]],
   "<urlencoded>": [
