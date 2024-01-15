@@ -1,8 +1,11 @@
 use fzero_gen::*;
 
 fn main() -> std::io::Result<()> {
-    let grammar: Grammar =
-        serde_json::from_slice(&std::fs::read("../../grammars/simplehttp.json")?)?;
+    let gfile = "../../grammars/simplehttp.json";
+
+    println!("cargo:rerun-if-changed={}", gfile);
+
+    let grammar: Grammar = serde_json::from_slice(&std::fs::read(gfile)?)?;
     println!("Loaded grammar json");
 
     // Convert the grammar file to the Rust structures
