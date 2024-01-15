@@ -122,7 +122,7 @@
     ["<user-agent>"],
     ["<via>"]
   ],
-  "<http-header-names": [
+  "<http-header-names>": [
     ["Accept"],
     ["Accept-Charset"],
     ["Accept-Encoding"],
@@ -294,7 +294,7 @@
   "<content-location-header-name>": [["Content-Location"]],
   "<content-location-value>": [["<absolute-uri>"], ["<relative-uri>"]],
   "<absolute-uri>": [["http://example.com/example"], ["<uri-start>"]],
-  "<relative-uri>": [["/example"]],
+  "<relative-uri>": [["/example"], ["<uri-location>"]],
   "<cookie>": [["Cookie:", "<spaces>", "<cookie-list>", "<newline>"]],
   "<cookie-list>": [["<cookie-value>"], ["<cookie-value>", "; ", "<cookie-list>"]],
   "<cookie-value>": [
@@ -326,6 +326,7 @@
     ["9999"],
     ["99999"],
     ["0"],
+    ["-1999"],
     ["<single-digit>", "<single-digit>", "<single-digit>", "<single-digit>"]
   ],
   "<time>": [
@@ -367,29 +368,22 @@
   "<setting>": [["AAMAAABkAARAAAAAAAIAAAAA"]],
   "<if>": [["<if-header-name>", ":", "<spaces>", "<tag-list>", "<newline>"]],
   "<if-header-name>": [["If"]],
-  "<urn-tag>": [["<start-tag>", "<urn-value>", "<end-tag>"]],
+  "<urn-tag>": [["<", "<urn-value>", ">"]],
   "<urn-value>": [["urn:uuid:181d4fae-7d8c-11d0-a765-00a0c91e6bf2"], ["urn:uuid:58f202ac-22cf-11d1-b12d-002035b29092"]],
   "<tag-list>": [
     ["(<urn:uuid:181d4fae-7d8c-11d0-a765-00a0c91e6bf2> [\"I am an ETag\"]) ([\"I am another ETag\"])"],
     ["(Not <urn:uuid:181d4fae-7d8c-11d0-a765-00a0c91e6bf2>", "<urn:uuid:58f202ac-22cf-11d1-b12d-002035b29092>)"]
   ],
-  "<if-match>": [["<if-match-header-name>", ":", "<spaces>", "<entity-tags>", "<newline>"]],
-  "<if-match-header-name>": [["If-Match"]],
-  "<entity-tags>": [["<entity-tag>"], ["<entity-tag>"], [","], ["<entity-tag>"]],
-  "<entity-tag>": [["*"], ["\"xyzzy\""]],
-  "<if-modified-since>": [["<if-modified-since-header-name>", ":", "<spaces>", "<date-value>", "<newline>"]],
-  "<if-modified-since-header-name>": [["If-Modified-Since"]],
-  "<if-none-match>": [["<if-none-match-header-name>", ":", "<spaces>", "<entity-tags>", "<newline>"]],
-  "<if-none-match-header-name>": [["If-None-Match"]],
-  "<if-range>": [["<if-range-header-name>", ":", "<spaces>", "<if-range-value>", "<newline>"]],
-  "<if-range-header-name>": [["If-Range"]],
+  "<if-match>": [["If-Match:", "<spaces>", "<entity-tags>", "<newline>"]],
+  "<entity-tags>": [["<entity-tag>"], ["<entity-tag>", ",", "<entity-tag>"]],
+  "<entity-tag>": [["*"], ["\"xyzzy\""], ["\"AAAAAAAAAAAAAAAAAAAAAAAAA\""], ["\"", "<string>", "\""]],
+  "<if-modified-since>": [["If-Modified-Since:", "<spaces>", "<date-value>", "<newline>"]],
+  "<if-none-match>": [["If-None-Match:", "<spaces>", "<entity-tags>", "<newline>"]],
+  "<if-range>": [["If-Range:", "<spaces>", "<if-range-value>", "<newline>"]],
   "<if-range-value>": [["<entity-tag>"], ["<date-value>"]],
-  "<if-schedule-tag-match>": [["<if-schedule-tag-match-header-name>", ":", "<spaces>", "<entity-tag>", "<newline>"]],
-  "<if-schedule-tag-match-header-name>": [["If-Schedule-Tag-Match"]],
-  "<if-unmodified-since>": [["<if-unmodified-since-header-name>", ":", "<spaces>", "<date-value>", "<newline>"]],
-  "<if-unmodified-since-header-name>": [["If-Unmodified-Since"]],
-  "<link>": [["<link-header-name>", ":", "<spaces>", "<link-value>", "<newline>"]],
-  "<link-header-name>": [["Link"]],
+  "<if-schedule-tag-match>": [["If-Schedule-Tag-Match:", "<spaces>", "<entity-tag>", "<newline>"]],
+  "<if-unmodified-since>": [["If-Unmodified-Since:", "<spaces>", "<date-value>", "<newline>"]],
+  "<link>": [["Link:", "<spaces>", "<link-value>", "<newline>"]],
   "<link-value>": [["<", "<absolute-uri>", ">"]],
   "<max-forwards>": [["<max-forwards-header-name>", ":", "<spaces>", "<max-forwards-value>", "<newline>"]],
   "<max-forwards-header-name>": [["Max-Forwards"]],
@@ -471,10 +465,12 @@
   "<time-units>": [["Seconds", "Hours", "Days"]],
   "<topic>": [["Topic:", "<spaces>", "<topic-value>", "<newline>"]],
   "<topic-value>": [["upd"], ["<string>"]],
-  "<trailer>": [["Trailer:", "<spaces>", "<trailer-value>", "<newline>"]],
-  "<trailer-value>": [["<http-header-names>"]],
-  "<transfer-encoding>": [["Transfer-Encoding: chunked\r\n"]],
-  "<transfer-encoding-header-name>": [["Transfer-Encoding"]],
+  "<trailer>": [["Trailer:", "<spaces>", "<trailer-value>", "<spaces>", "<newline>"]],
+  "<trailer-value>": [["<http-header-names>"], ["<component-string>"]],
+  "<transfer-encoding>": [
+    ["Transfer-Encoding: chunked\r\n"],
+    ["Transfer-Encoding:", "<spaces>", "<transfer-encodings>", "<newline>"]
+  ],
   "<transfer-encodings>": [["<encoding-name>"], ["<encoding-name>"], [","], ["<encoding-name>"]],
   "<ttl>": [["TTL: 0"], ["TTL: 1"], ["TTL: ", "<digits>"]],
   "<urgency>": [["Urgency:", "<urgency-value>", "<newline>"]],
@@ -496,7 +492,7 @@
     ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:104.0) Gecko/20100101 Firefox/104.0"],
     ["Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.102 Safari/537.36 OPR/90.0.4480.84"],
     ["whatever"],
-    [""]
+    ["<string>"]
   ],
   "<via>": [["Via:", "<spaces>", "<via-values>", "<newline>"]],
   "<via-values>": [["<via-value>"], ["<via-value>", ",", "<via-values>"]],
@@ -717,7 +713,7 @@
     ["<chars>", "<string>"]
   ],
   "<base64>": [["ZXhhbXBsZQo="], ["QUFBQUFBQUFBQUFBQUFBQUFBQUEK"], ["<base64-1>"]],
-  "<b64-chars>": [["<lowercase>"], ["<uppercase>"], ["single-digit"], ["+"], ["/"]],
+  "<b64-chars>": [["<lowercase>"], ["<uppercase>"], ["<single-digit>"], ["+"], ["/"]],
   "<b64-padding>": [["="], ["=="]],
   "<base64-1>": [["<b64-chars>"], ["<b64-chars>", "<b64-padding>"], ["<b64-chars>", "<base64-1>"]],
   "<component-string>": [["<lowercase>", "<component-string-1>"], ["<uppercase>", "<component-string-1>"]],
