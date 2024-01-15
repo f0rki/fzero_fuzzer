@@ -14,9 +14,16 @@ impl<'a> BufRng<'a> {
 impl<'a> RngCore for BufRng<'a> {
     fn next_u32(&mut self) -> u32 {
         let bl = self.buf.len();
-        if bl > 4 {
-            let mut ibuf = [0u8; 4];
-            let xl = core::cmp::min(bl, 4);
+        const SZ: usize = core::mem::size_of::<u32>();
+        if bl >= SZ {
+            unsafe {
+                let p = self.buf.as_ptr();
+                self.buf = &self.buf[SZ..];
+                (p as *const u32).read_unaligned()
+            }
+        } else if bl > 0 {
+            let mut ibuf = [0u8; SZ];
+            let xl = core::cmp::min(bl, SZ);
             ibuf[..xl].copy_from_slice(&self.buf[..xl]);
             self.buf = &self.buf[xl..];
             u32::from_le_bytes(ibuf)
@@ -27,9 +34,16 @@ impl<'a> RngCore for BufRng<'a> {
 
     fn next_u64(&mut self) -> u64 {
         let bl = self.buf.len();
-        if bl > 8 {
-            let mut ibuf = [0u8; 8];
-            let xl = core::cmp::min(bl, 8);
+        const SZ: usize = core::mem::size_of::<u64>();
+        if bl >= SZ {
+            unsafe {
+                let p = self.buf.as_ptr();
+                self.buf = &self.buf[SZ..];
+                (p as *const u64).read_unaligned()
+            }
+        } else if bl > 0 {
+            let mut ibuf = [0u8; SZ];
+            let xl = core::cmp::min(bl, SZ);
             ibuf[..xl].copy_from_slice(&self.buf[..xl]);
             self.buf = &self.buf[xl..];
             u64::from_le_bytes(ibuf)
@@ -63,7 +77,7 @@ mod tests {
     fn it_works() {
         let buf = [
             1u8, 1u8, 0u8, 0u8, // first next_u32()
-            1u8, 1u8, 1u8, 1u8,
+            1u8, 1u8, 1u8, 1u8, 3,
         ];
 
         let mut rng = BufRng::new(&buf);
