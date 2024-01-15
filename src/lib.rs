@@ -1,27 +1,21 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
-use std::process::Command;
-use serde::{Deserialize, Serialize};
-
-/// If this is `true` then the output file we generate will not emit any
-/// unsafe code. I'm not aware of any bugs with the unsafe code that I use and
-/// thus this is by default set to `false`. Feel free to set it to `true` if
-/// you are concerned.
-const SAFE_ONLY: bool = false;
 
 /// Representation of a grammar file in a Rust structure. This allows us to
 /// use Serde to serialize and deserialize the json grammar files
 #[derive(Serialize, Deserialize, Default, Debug)]
-struct Grammar(BTreeMap<String, Vec<Vec<String>>>);
+pub struct Grammar(BTreeMap<String, Vec<Vec<String>>>);
 
 /// A strongly typed wrapper around a `usize` which selects different fragment
 /// identifiers
 #[derive(Clone, Copy, Debug)]
-struct FragmentId(usize);
+pub struct FragmentId(usize);
 
 /// A fragment which is specified by the grammar file
 #[derive(Clone, Debug)]
-enum Fragment {
+pub enum Fragment {
     /// A non-terminal fragment which refers to a list of `FragmentId`s to
     /// randomly select from for expansion
     NonTerminal(Vec<FragmentId>),
@@ -41,7 +35,7 @@ enum Fragment {
 /// A grammar representation in Rust that is designed to be easy to work with
 /// in-memory and optimized for code generation.
 #[derive(Debug, Default)]
-struct GrammarRust {
+pub struct GrammarRust {
     /// All types
     fragments: Vec<Fragment>,
 
@@ -50,24 +44,35 @@ struct GrammarRust {
 
     /// Mapping of non-terminal names to fragment identifers
     name_to_fragment: BTreeMap<String, FragmentId>,
+
+    /// If this is `true` then the output file we generate will not emit any
+    /// unsafe code. I'm not aware of any bugs with the unsafe code that I use and
+    /// thus this is by default set to `false`. Feel free to set it to `true` if
+    /// you are concerned.
+    pub safe_only: bool,
+
+    pub generate_main: bool,
 }
 
 impl GrammarRust {
     /// Create a new Rust version of a `Grammar` which was loaded via a
     /// grammar json specification.
-    fn new(grammar: &Grammar) -> Self {
+    pub fn new(grammar: &Grammar, start_fragment: Option<&str>) -> Self {
         // Create a new grammar structure
         let mut ret = GrammarRust::default();
+        ret.safe_only = false;
+        ret.generate_main = false;
 
         // Parse the input grammar to resolve all fragment names
         for (non_term, _) in grammar.0.iter() {
             // Make sure that there aren't duplicates of fragment names
-            assert!(!ret.name_to_fragment.contains_key(non_term),
-                "Duplicate non-terminal definition, fail");
+            assert!(
+                !ret.name_to_fragment.contains_key(non_term),
+                "Duplicate non-terminal definition, fail"
+            );
 
             // Create a new, empty fragment
-            let fragment_id = ret.allocate_fragment(
-                Fragment::NonTerminal(Vec::new()));
+            let fragment_id = ret.allocate_fragment(Fragment::NonTerminal(Vec::new()));
 
             // Add the name resolution for the fragment
             ret.name_to_fragment.insert(non_term.clone(), fragment_id);
@@ -89,18 +94,16 @@ impl GrammarRust {
 
                 // Go through each option in the sub-fragment
                 for option in js_sub_fragment {
-                    let fragment_id = if let Some(&non_terminal) =
-                            ret.name_to_fragment.get(option) {
+                    let fragment_id = if let Some(&non_terminal) = ret.name_to_fragment.get(option)
+                    {
                         // If we can resolve the name of this fragment, it is a
                         // non-terminal fragment and should be allocated as
                         // such
-                        ret.allocate_fragment(
-                            Fragment::NonTerminal(vec![non_terminal]))
+                        ret.allocate_fragment(Fragment::NonTerminal(vec![non_terminal]))
                     } else {
                         // Convert the terminal bytes into a vector and
                         // create a new fragment containing it
-                        ret.allocate_fragment(Fragment::Terminal(
-                            option.as_bytes().to_vec()))
+                        ret.allocate_fragment(Fragment::Terminal(option.as_bytes().to_vec()))
                     };
 
                     // Push this fragment as an option
@@ -108,8 +111,7 @@ impl GrammarRust {
                 }
 
                 // Create a new fragment of all the options
-                variants.push(
-                    ret.allocate_fragment(Fragment::Expression(options)));
+                variants.push(ret.allocate_fragment(Fragment::Expression(options)));
             }
 
             // Get access to the fragment we want to update based on the
@@ -120,8 +122,10 @@ impl GrammarRust {
             *fragment = Fragment::NonTerminal(variants);
         }
 
+        let start_fragment = start_fragment.or(Some("<start>")).unwrap();
+
         // Resolve the start node
-        ret.start = Some(ret.name_to_fragment["<start>"]);
+        ret.start = Some(ret.name_to_fragment[start_fragment]);
 
         ret
     }
@@ -157,8 +161,7 @@ impl GrammarRust {
                         // If this non-terminal only has one option, replace
                         // itself with the only option it resolves to
                         if options.len() == 1 {
-                            self.fragments[idx] =
-                                self.fragments[options[0].0].clone();
+                            self.fragments[idx] = self.fragments[options[0].0].clone();
                             changed = true;
                         }
                     }
@@ -177,15 +180,13 @@ impl GrammarRust {
                         // If this expression only does one thing, then replace
                         // the expression with the thing that it does.
                         if expr.len() == 1 {
-                            self.fragments[idx] =
-                                self.fragments[expr[0].0].clone();
+                            self.fragments[idx] = self.fragments[expr[0].0].clone();
                             changed = true;
                         }
 
                         // Remove all `Nop`s from this expression, as they
                         // wouldn't result in anything occuring.
-                        if let Fragment::Expression(exprs) =
-                                &mut self.fragments[idx] {
+                        if let Fragment::Expression(exprs) = &mut self.fragments[idx] {
                             // Only retain fragments which are not nops
                             exprs.retain(|x| {
                                 if nop_fragments.contains(&x.0) {
@@ -212,69 +213,74 @@ impl GrammarRust {
     pub fn program<P: AsRef<Path>>(&self, path: P, max_depth: usize) {
         let mut program = String::new();
 
+        let mut terminal_count = 0usize;
+        let mut terminal_list = String::new();
+        let mut seen_terminals = HashSet::new();
+        for fragment in self.fragments.iter() {
+            if let Fragment::Terminal(data) = fragment {
+                let s = String::from_utf8_lossy(data);
+                if !seen_terminals.contains(&s) {
+                    terminal_list += &format!("{:?}, ", s);
+                    terminal_count += 1;
+                    seen_terminals.insert(s);
+                }
+            }
+        }
+
         // Construct the base of the application. This is a profiling loop that
         // is used for testing.
-        program += &format!(r#"
+        program += &format!(
+            r#"
 #![allow(unused)]
 use std::cell::Cell;
-use std::time::Instant;
+use rand::Rng;
 
-fn main() {{
-    let mut fuzzer = Fuzzer {{
-        seed:  Cell::new(0x34cc028e11b4f89c),
-        buf:   Vec::new(),
-    }};
-    
-    let mut generated = 0usize;
-    let it = Instant::now();
+pub struct GrammarGenerator;
 
-    for iters in 1u64.. {{
-        fuzzer.buf.clear();
-        fuzzer.fragment_{}(0);
-        generated += fuzzer.buf.len();
+pub static TERMINALS: [&'static str; {}] = [{}];
 
-        // Filter to reduce the amount of times printing occurs
-        if (iters & 0xfffff) == 0 {{
-            let elapsed = (Instant::now() - it).as_secs_f64();
-            let bytes_per_sec = generated as f64 / elapsed;
-            print!("MiB/sec: {{:12.4}}\n", bytes_per_sec / 1024. / 1024.);
-        }}
+impl GrammarGenerator {{
+
+    pub fn terminals() -> &'static [&'static str] {{
+        return &TERMINALS;
     }}
-}}
 
-struct Fuzzer {{
-    seed:  Cell<usize>,
-    buf:   Vec<u8>,
-}}
-
-impl Fuzzer {{
-    fn rand(&self) -> usize {{
-        let mut seed = self.seed.get();
-        seed ^= seed << 13;
-        seed ^= seed >> 17;
-        seed ^= seed << 43;
-        self.seed.set(seed);
-        seed
+    pub fn generate_into(out: &mut Vec<u8>, max_depth: Option<usize>, rng: &mut impl Rng) {{
+        out.clear();
+        Self::fragment_{}(0, max_depth.unwrap_or({} as usize), out, rng);
     }}
-"#, self.start.unwrap().0);
+
+    pub fn generate_new(max_depth: Option<usize>, rng: &mut impl Rng) -> Vec<u8> {{
+        let mut out = Vec::new();
+        Self::generate_into(&mut out, max_depth, rng);
+        out
+    }}
+"#,
+            terminal_count,
+            terminal_list,
+            self.start.unwrap().0,
+            max_depth
+        );
 
         // Go through each fragment in the list of fragments
         for (id, fragment) in self.fragments.iter().enumerate() {
             // Create a new function for this fragment
-            program += &format!("    fn fragment_{}(&mut self, depth: usize) {{\n", id);
+            program += &format!("    fn fragment_{}(depth: usize, max_depth: usize, buf: &mut Vec<u8>, rng: &mut impl Rng) {{\n", id);
 
             // Add depth checking to terminate on depth exhaustion
-            program += &format!("        if depth >= {} {{ return; }}\n",
-                max_depth);
+            program.push_str("        if depth >= max_depth { return; }\n");
 
             match fragment {
                 Fragment::NonTerminal(options) => {
                     // For non-terminal cases pick a random variant to select
                     // and invoke that fragment's routine
-                    program += &format!("        match self.rand() % {} {{\n", options.len());
+                    program += &format!("        match rng.gen_range(0..{}) {{\n", options.len());
 
                     for (option_id, option) in options.iter().enumerate() {
-                        program += &format!("            {} => self.fragment_{}(depth + 1),\n", option_id, option.0);
+                        program += &format!(
+                            "            {} => Self::fragment_{}(depth + 1, max_depth, buf, rng),\n",
+                            option_id, option.0
+                        );
                     }
                     program += &format!("            _ => unreachable!(),\n");
 
@@ -283,32 +289,43 @@ impl Fuzzer {{
                 Fragment::Expression(expr) => {
                     // Invoke all of the expression's routines in order
                     for &exp in expr.iter() {
-                        program += &format!("        self.fragment_{}(depth + 1);\n", exp.0);
+                        program += &format!(
+                            "        Self::fragment_{}(depth + 1, max_depth, buf, rng);\n",
+                            exp.0
+                        );
                     }
                 }
                 Fragment::Terminal(value) => {
-                    // Append the terminal value to the output buffer
-                    if SAFE_ONLY {
-                        program += &format!("        self.buf.extend_from_slice(&{:?});\n",
-                            value);
+                    if value.len() == 1 {
+                        program += &format!("        buf.push({:?});\n", value[0]);
                     } else {
-                        // For some reason this is faster than
-                        // `extend_from_slice` even though it does the exact
-                        // same thing. This was observed to be over a 4-5x
-                        // speedup in some scenarios.
-                        program += &format!(r#"
+                        // Append the terminal value to the output buffer
+                        if self.safe_only {
+                            program += &format!("        buf.extend_from_slice(&{:?});\n", value);
+                        } else {
+                            // For some reason this is faster than
+                            // `extend_from_slice` even though it does the exact
+                            // same thing. This was observed to be over a 4-5x
+                            // speedup in some scenarios.
+                            program += &format!(
+                                r#"
             unsafe {{
-                let old_size = self.buf.len();
+                let old_size = buf.len();
                 let new_size = old_size + {};
 
-                if new_size > self.buf.capacity() {{
-                    self.buf.reserve(new_size - old_size);
+                if new_size > buf.capacity() {{
+                    buf.reserve(new_size - old_size);
                 }}
 
-                std::ptr::copy_nonoverlapping({:?}.as_ptr(), self.buf.as_mut_ptr().offset(old_size as isize), {});
-                self.buf.set_len(new_size);
+                std::ptr::copy_nonoverlapping({:?}.as_ptr(), buf.as_mut_ptr().offset(old_size as isize), {});
+                buf.set_len(new_size);
             }}
-    "#, value.len(), value, value.len());
+    "#,
+                                value.len(),
+                                value,
+                                value.len()
+                            );
+                        }
                     }
                 }
                 Fragment::Nop => {}
@@ -319,50 +336,6 @@ impl Fuzzer {{
         program += "}\n";
 
         // Write out the test application
-        std::fs::write(path, program)
-            .expect("Failed to create output Rust application");
+        std::fs::write(path, program).expect("Failed to create output Rust application");
     }
 }
-
-fn main() -> std::io::Result<()> {
-    // Get access to the command line arguments
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() != 5 {
-        print!("usage: fzero <grammar json> <output Rust file> <output binary name> <max depth>\n");
-        return Ok(());
-    }
-
-    // Load up a grammar file
-    let grammar: Grammar = serde_json::from_slice(
-        &std::fs::read(&args[1])?)?;
-    print!("Loaded grammar json\n");
-
-    // Convert the grammar file to the Rust structures
-    let mut gram = GrammarRust::new(&grammar);
-    print!("Converted grammar to binary format\n");
-
-    // Optimize the grammar
-    gram.optimize();
-    print!("Optimized grammar\n");
-
-    // Generate a Rust application
-    gram.program(&args[2],
-        args[4].parse().expect("Invalid digit in max depth"));
-    print!("Generated Rust source file\n");
-
-    // Compile the application
-    // rustc -O -g test.rs -C target-cpu=native
-    let status = Command::new("rustc")
-        .arg("-O")                // Optimize the binary
-        .arg("-g")                // Generate debug information
-        .arg(&args[2])            // Name of the input Rust file
-        .arg("-C")                // Optimize for the current microarchitecture
-        .arg("target-cpu=native")
-        .arg("-o")                // Output filename
-        .arg(&args[3]).spawn()?.wait()?;
-    assert!(status.success(), "Failed to compile Rust binary");
-    print!("Created Rust binary!\n");
-
-    Ok(())
-}
-
