@@ -31,8 +31,8 @@ lazy_static! {
         let grammar: Grammar = serde_json::from_slice(bytes).unwrap();
         GrammarRust::construct(&grammar)
     };
-    static ref HTTP_HEADERS: GrammarRust = {
-        let bytes = include_bytes!("../grammars/http_headers.json");
+    static ref HTTP: GrammarRust = {
+        let bytes = include_bytes!("../grammars/http.json");
         let grammar: Grammar = serde_json::from_slice(bytes).unwrap();
         GrammarRust::construct(&grammar)
     };
@@ -101,12 +101,7 @@ pub fn load_if_builtin(option: &str, gram: &mut GrammarRust) -> Option<FragmentI
                 "numbers" => Some(extend_and_rename(gram, &NUMBERS, "<!numbers.", rule)),
                 "url" => Some(extend_and_rename(gram, &URL, "<!url.", rule)),
                 "json" => Some(extend_and_rename(gram, &JSON, "<!json.", rule)),
-                "http_headers" => Some(extend_and_rename(
-                    gram,
-                    &HTTP_HEADERS,
-                    "<!http_headers.",
-                    rule,
-                )),
+                "http" => Some(extend_and_rename(gram, &HTTP, "<!http.", rule)),
                 _ => None,
             };
         }

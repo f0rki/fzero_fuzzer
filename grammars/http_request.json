@@ -1,0 +1,17 @@
+{
+  "<start>": [["<request-line>", "<!http.headers-start>", "<!http.body-start>"]],
+  "<newline>": [["\r\n"]],
+  "<request-line>": [
+    [
+      "<!http.method-name>",
+      " ",
+      "<!string.spaces>",
+      "<!url.url>",
+      " ",
+      "<!string.spaces>",
+      "<!http.http-version>",
+      "<!string.spaces>",
+      "<newline>"
+    ]
+  ]
+}

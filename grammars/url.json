@@ -1,5 +1,7 @@
 {
   "<start>": [["<uri-start>"]],
+  "<url>": [["<uri-start>"]],
+  "<uri>": [["<uri-start>"]],
   "<uri-start>": [
     ["<pre-defined>"],
     ["<uri-protocol>", "<uri-hostname>", "/", "<uri-location>"],
@@ -21,6 +23,8 @@
     ["a.b.c.d.f.g.h.i.j.k.example.com"],
     ["<uri-hostname-1>"]
   ],
+  "<uri-hostname-1>": [["<!string.component-string>"], ["<!string.component-string>", ".", "<uri-hostname-1>"]],
+  "<uri-location>": [["<!string.component-string>"], ["<!string.component-string>", "/", "<uri-location>"]],
   "<uri-params>": [
     ["?", "<uri-params-pair>"],
     ["?", "<uri-params-pair>", "&", "<uri-params-pair>"],

@@ -1,5 +1,41 @@
 {
-  "<start>": [["<headers-start>"]],
+  "<newline>": [["\r\n"]],
+  "<method>": [["<method-name>"]],
+  "<method-name>": [["GET"], ["HEAD"], ["POST"], ["PUT"], ["DELETE"], ["CONNECT"], ["OPTIONS"], ["TRACE"]],
+  "<http-version>": [["HTTP/", "<http-version-nums>"]],
+  "<http-version-nums>": [
+    ["0.9"],
+    ["1.0"],
+    ["1.1"],
+    ["2.0"],
+    ["3.0"],
+    ["<!numbers.digit>", ".", "<!numbers.digit>"],
+    ["<!numbers.digits>", ".", "<!numbers.digits>"]
+  ],
+  "<headers-start>": [["<headers-start>", "<newline>"]],
+  "<body-start>": [["<chunked-body>"], ["<!string.urlencoded>"], ["<!string.string>"], ["<!string.base64>"]],
+  "<chunked-body>": [
+    ["<chunk-list>", "<last-chunk>", "<newline>"],
+    ["<chunk-list>", "<last-chunk>", "<http-trailer-part>", "<newline>"]
+  ],
+  "<chunk-list>": [["<chunk>"], ["<chunk>", "<newline>", "<chunk-list>"]],
+  "<chunk>": [
+    ["<chunk-size>", "<chunk-extension>", "<newline>", "<chunk-data>", "<newline>"],
+    ["<chunk-size>", "<newline>", "<chunk-data>", "<newline>"]
+  ],
+  "<chunk-size>": [["4"], ["128"], ["<!numbers.integer>"], ["<!numbers.number>"]],
+  "<chunk-extension>": [[";foo=bar"], [";", "<!url.uri-params-list>"]],
+  "<chunk-data>": [["AAAA"], ["BBBB"], ["<!string.string>"], ["<!string.base64>"]],
+  "<last-chunk>": [["0", "<chunk-extension>", "<newline>"], ["0", "<newline>"]],
+  "<http-trailer-part>": [
+    ["Transfer-Encoding: chunked\r\n"],
+    ["Transfer-Encoding: identity\r\n"],
+    ["Content-Length: 180\r\n"],
+    ["Content-Length: ", "<!numbers.integer>", "\r\n"],
+    ["Bar: Foo\r\n"]
+  ],
+  "<headers-list>": [["<headers-start>"]],
+  "<one-header>": [["<some-header>"]],
   "<newline>": [["\r\n"]],
   "<headers-start>": [["<headers>", "<newline>"]],
   "<headers>": [
@@ -154,10 +190,17 @@
     ["Urgency"],
     ["Upgrade"],
     ["User-Agent"],
-    ["Via"]
+    ["Via"],
+    ["Server"],
+    ["Last-Modified"]
   ],
   "<boolean>": [["T"], ["F"]],
-  "<quality>": [["q=1.0"], ["q=0.0"], ["q=", "<!numbers.number>", ".", "<!numbers.number>"], ["q=", "<!numbers.number>"]],
+  "<quality>": [
+    ["q=1.0"],
+    ["q=0.0"],
+    ["q=", "<!numbers.number>", ".", "<!numbers.number>"],
+    ["q=", "<!numbers.number>"]
+  ],
   "<chunked-transfer-encoding>": [["Transfer-Encoding:", "<!string.spaces>", "chunked", "<newline>"]],
   "<accept>": [["Accept:", "<!string.spaces>", "<accept-types>", "!<!string.spaces>", "<newline>"]],
   "<accept-types>": [["<accept-type>"], ["<accept-type>", ",", "<accept-type>"]],
@@ -179,9 +222,16 @@
     ["image/svg+xml"],
     ["model/3mf"],
     ["text/html"],
-    ["video/mp4"]
+    ["video/mp4"],
+    ["<random-mimetype>"]
   ],
-  "<accept-charset>": [["<accept-charset-header-name>", "<!string.spaces>", ":", "!<!string.spaces>", "<charsets>", "<newline>"]],
+  "<random-mimetype>": [
+    ["<!string.component-string>", "/", "<!string.component-string>"],
+    ["<!string.string>", "/", "<!string.string>"]
+  ],
+  "<accept-charset>": [
+    ["<accept-charset-header-name>", "<!string.spaces>", ":", "!<!string.spaces>", "<charsets>", "<newline>"]
+  ],
   "<accept-charset-header-name>": [["Accept-Charset"]],
   "<charsets>": [["<charset>"], ["<charset>", "<!string.spaces>", ",", "!<!string.spaces>", "<charset>"]],
   "<charset>": [["<charset-name>", "<!string.spaces>", ";", "!<!string.spaces>", "<quality>"]],
@@ -205,14 +255,34 @@
   "<language-name>": [["fr"], ["en"], ["de"], ["<lowercase>", "<lowercase>"]],
   "<accept-ranges>": [["Accept-Ranges", "<!string.spaces>", ":", "!<!string.spaces>", "<range-unit>", "<newline>"]],
   "<range-unit>": [["bytes"], ["none"]],
-  "<allow>": [["Allow", "<!string.spaces>", ":", "!<!string.spaces>", "<method-names>", "<newline>"], ["Allow:", "!<!string.spaces>", "<method-names>", "<newline>"]],
-  "<method-names>": [["<method-name>"], ["<method-name>", ",", "<method-name>"]],
-  "<alpn>": [["ALPN",  "<!string.spaces>", ":", "!<!string.spaces>", "<protocol-ids>", "<newline>"], ["ALPN:", "!<!string.spaces>", "<protocol-ids>", "<newline>"]],
+  "<allow>": [
+    ["Allow", "<!string.spaces>", ":", "!<!string.spaces>", "<method-names>", "<newline>"],
+    ["Allow:", "!<!string.spaces>", "<method-names>", "<newline>"]
+  ],
+  "<method-names>": [["<method-name>"], ["<method-name>", ",", "<method-names>"]],
+  "<alpn>": [
+    ["ALPN", "<!string.spaces>", ":", "!<!string.spaces>", "<protocol-ids>", "<newline>"],
+    ["ALPN:", "!<!string.spaces>", "<protocol-ids>", "<newline>"]
+  ],
   "<protocol-ids>": [["<protocol-id>"], ["<protocol-id>", ",", "<protocol-id>"]],
   "<protocol-id>": [["http%2F1.1"], ["h2"], ["http%2F", "<http-version-nums>"]],
-  "<alt-used>": [["Alt-Used", "<!string.spaces>", ":", "!<!string.spaces>", "<alt-svc>", "<newline>"], ["Alt-Used:", "!<!string.spaces>", "<alt-svc>", "<newline>"]],
-  "<alt-svc>": [["<uri-start>"]],
-  "<authorization>": [["Authorization", ":", "<!string.spaces>", "<auth-scheme>", "!<!string.spaces>", "<creds>", "!<!string.spaces>", "<newline>"]],
+  "<alt-used>": [
+    ["Alt-Used", "<!string.spaces>", ":", "!<!string.spaces>", "<alt-svc>", "<newline>"],
+    ["Alt-Used:", "!<!string.spaces>", "<alt-svc>", "<newline>"]
+  ],
+  "<alt-svc>": [["<!url.url>"]],
+  "<authorization>": [
+    [
+      "Authorization",
+      ":",
+      "<!string.spaces>",
+      "<auth-scheme>",
+      "!<!string.spaces>",
+      "<creds>",
+      "!<!string.spaces>",
+      "<newline>"
+    ]
+  ],
   "<auth-scheme>": [
     ["Basic"],
     ["Bearer"],
@@ -225,9 +295,12 @@
     ["SCRAM-SHA-256"],
     ["vapid"]
   ],
-  "<creds>": [["123456"], ["YWxhZGRpbjpvcGVuc2VzYW1l"], ["<base64>"]],
+  "<creds>": [["123456"], ["YWxhZGRpbjpvcGVuc2VzYW1l"], ["<!string.base64>"]],
   "<cache-control>": [["Cache-Control:", "<!string.spaces>", "<cache-directives>", "<newline>"]],
-  "<cache-directives>": [["<cache-directive>"], ["<cache-directive>", "<!string.spaces>", ",","!<!string.spaces>", "<cache-directive>"]],
+  "<cache-directives>": [
+    ["<cache-directive>"],
+    ["<cache-directive>", "<!string.spaces>", ",", "!<!string.spaces>", "<cache-directive>"]
+  ],
   "<cache-directive>": [
     ["max-age=5"],
     ["max-stale=5"],
@@ -238,42 +311,51 @@
     ["only-if-cached"]
   ],
   "<caldav-timezones>": [["CalDav-Timezones", "<!string.spaces>", ":", "!<!string.spaces>", "<boolean>", "<newline>"]],
-  "<cdn-loop>": [["CND-Loop","<!string.spaces>", ":", "!<!string.spaces>", "<cdn-infos>", "<newline>"]],
+  "<cdn-loop>": [["CND-Loop", "<!string.spaces>", ":", "!<!string.spaces>", "<cdn-infos>", "<newline>"]],
   "<cdn-infos>": [["<cdn-info>"], ["<cdn-info>", ",", "<cdn-info>"]],
   "<cdn-info>": [
     ["foo123.foocdn.example"],
     ["barcdn.example; trace=\"abcdef\""],
     ["AnotherCDN; abc=123; def=\"456\""],
-    ["<uri-hostname>"]
+    ["<!url.uri-hostname>"],
+    ["<!url.uri-hostname>", ";", "a=1"]
   ],
-  "<content-encoding>": [["Content-Encoding","<!string.spaces>", ":", "!<!string.spaces>", "<transfer-encodings>", "<newline>"]],
-  "<content-language>": [["Content-Language","<!string.spaces>", ":",  "!<!string.spaces>", "<languages>", "<newline>"]],
+  "<content-encoding>": [
+    ["Content-Encoding", "<!string.spaces>", ":", "!<!string.spaces>", "<transfer-encodings>", "<newline>"]
+  ],
+  "<content-language>": [
+    ["Content-Language", "<!string.spaces>", ":", "!<!string.spaces>", "<languages>", "<newline>"]
+  ],
   "<content-length>": [
     ["Content-Length: 200\r\n"],
     ["Content-Length: 0\r\n"],
     ["Content-Length: ", "<!numbers.number>", "\r\n"]
   ],
-  "<content-location>": [["Content-Location", "<!string.spaces>", ":","!<!string.spaces>", "<content-location-value>", "<newline>"]],
+  "<content-location>": [
+    ["Content-Location", "<!string.spaces>", ":", "!<!string.spaces>", "<content-location-value>", "<newline>"]
+  ],
   "<content-location-value>": [["<absolute-uri>"], ["<relative-uri>"]],
-  "<absolute-uri>": [["http://example.com/example"], ["<uri-start>"]],
-  "<relative-uri>": [["/example"], ["<uri-location>"]],
-  "<cookie>": [["Cookie","<!string.spaces>", ":","!<!string.spaces>", "<cookie-list>", "<newline>"]],
-  "<cookie-list>": [["<cookie-value>"], ["<cookie-value>", "<!string.spaces>", ";", "!<!string.spaces>", "<cookie-list>"]],
+  "<absolute-uri>": [["<!url.url>"]],
+  "<relative-uri>": [["/example"], ["<!url.uri-location>"]],
+  "<cookie>": [["Cookie", "<!string.spaces>", ":", "!<!string.spaces>", "<cookie-list>", "<newline>"]],
+  "<cookie-list>": [
+    ["<cookie-value>"],
+    ["<cookie-value>", "<!string.spaces>", ";", "!<!string.spaces>", "<cookie-list>"]
+  ],
   "<cookie-value>": [
     ["SID=31d4d96e407aad42"],
     ["PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"],
     ["<!string.component-string>", "=", "<!string.component-string>"],
     ["<!string.component-string>", "=", "<uri-params-string>"],
-    ["<!string.component-string>", "=", "<base64>"]
+    ["<!string.component-string>", "=", "<!string.base64>"]
   ],
-  "<date>": [["Date:", "<!string.spaces>", "<!string.date>", "<newline>"]],
+  "<last-modified>": [["Last-Modified", "<!string.spaces>", ":", "<!string.spaces>", "<date-value>", "<newline>"]],
+  "<date>": [["Date", "<!string.spaces>", ":", "<!string.spaces>", "<!string.date>", "<newline>"]],
   "<depth>": [["Depth:", "<!string.spaces>", "<depth-value>", "<newline>"]],
   "<depth-value>": [["0"], ["1"], ["infinity"], ["<!numbers.number>"]],
-  "<destination>": [["<destination-header-name>", ":", "<!string.spaces>", "<absolute-uri>", "<newline>"]],
-  "<destination-header-name>": [["Destination"]],
-  "<early-data>": [["<early-data-header-name>", ":", "<!string.spaces>", "<early-data-value>", "<newline>"]],
-  "<early-data-header-name>": [["Early-Data"]],
-  "<early-data-value>": [["1"]],
+  "<destination>": [["Destination", ":", "<!string.spaces>", "<absolute-uri>", "<newline>"]],
+  "<early-data>": [["Early-Data", ":", "<!string.spaces>", "<early-data-value>", "<newline>"]],
+  "<early-data-value>": [["1"], ["<!numbers.number>"]],
   "<expect>": [["<expect-header-name>", ":", "<!string.spaces>", "<expect-value>", "<newline>"]],
   "<expect-header-name>": [["Expect"]],
   "<expect-value>": [["100-continue"]],
@@ -297,7 +379,7 @@
   ],
   "<if-match>": [["If-Match:", "<!string.spaces>", "<entity-tags>", "<newline>"]],
   "<entity-tags>": [["<entity-tag>"], ["<entity-tag>", ",", "<entity-tag>"]],
-  "<entity-tag>": [["*"], ["\"xyzzy\""], ["\"AAAAAAAAAAAAAAAAAAAAAAAAA\""], ["\"", "<string>", "\""]],
+  "<entity-tag>": [["*"], ["\"xyzzy\""], ["\"AAAAAAAAAAAAAAAAAAAAAAAAA\""], ["\"", "<!string.string>", "\""]],
   "<if-modified-since>": [["If-Modified-Since:", "<!string.spaces>", "<date-value>", "<newline>"]],
   "<if-none-match>": [["If-None-Match:", "<!string.spaces>", "<entity-tags>", "<newline>"]],
   "<if-range>": [["If-Range:", "<!string.spaces>", "<if-range-value>", "<newline>"]],
@@ -312,10 +394,14 @@
   "<mime-version>": [["<mime-version-header-name>", ":", "<!string.spaces>", "<mime-version-value>", "<newline>"]],
   "<mime-version-header-name>": [["MIME-Version"]],
   "<mime-version-value>": [["1.0"], ["1.1"]],
-  "<odata-isolation>": [["<odata-isolation-header-name>", ":", "<!string.spaces>", "<odata-isolation-value>", "<newline>"]],
+  "<odata-isolation>": [
+    ["<odata-isolation-header-name>", ":", "<!string.spaces>", "<odata-isolation-value>", "<newline>"]
+  ],
   "<odata-isolation-header-name>": [["OData-Isolation"]],
   "<odata-isolation-value>": [["snapshot"]],
-  "<odata-maxversion>": [["<odata-maxversion-header-name>", ":", "<!string.spaces>", "<odata-version-value>", "<newline>"]],
+  "<odata-maxversion>": [
+    ["<odata-maxversion-header-name>", ":", "<!string.spaces>", "<odata-version-value>", "<newline>"]
+  ],
   "<odata-maxversion-header-name>": [["OData-MaxVersion"]],
   "<odata-version-value>": [["4.0"]],
   "<odata-version>": [["<odata-version-header-name>", ":", "<!string.spaces>", "<odata-version-value>", "<newline>"]],
@@ -365,27 +451,36 @@
   ],
   "<sec-websocket-extensions-value>": [["deflate-stream"], ["mux"], ["max-channels:4; flow-control"]],
   "<sec-websocket-key>": [["Sec-Websocket-Key:", "<!string.spaces>", "<sec-websocket-key-value>", "<newline>"]],
-  "<sec-websocket-key-value>": [["dGhlIHNhbXBsZSBub25jZQ=="], ["<base64>"]],
-  "<sec-websocket-protocol>": [["Sec-Websocket-Protocol:", "<!string.spaces>", "<sec-websocket-protocol-values>", "<newline>"]],
+  "<sec-websocket-key-value>": [["dGhlIHNhbXBsZSBub25jZQ=="], ["<!string.base64>"]],
+  "<sec-websocket-protocol>": [
+    ["Sec-Websocket-Protocol:", "<!string.spaces>", "<sec-websocket-protocol-values>", "<newline>"]
+  ],
   "<sec-websocket-protocol-values>": [
     ["<sec-websocket-protocol-value>"],
     ["<sec-websocket-protocol-value>", ",", "<sec-websocket-protocol-value>"]
   ],
   "<sec-websocket-protocol-value>": [["chat"], ["superchat"]],
-  "<sec-websocket-version>": [["Sec-Websocket-Version:", "<!string.spaces>", "<sec-websocket-version-value>", "<newline>"]],
+  "<sec-websocket-version>": [
+    ["Sec-Websocket-Version:", "<!string.spaces>", "<sec-websocket-version-value>", "<newline>"]
+  ],
   "<sec-websocket-version-value>": [["13"], ["<!numbers.number>"]],
   "<slug>": [["Slug:", "<!string.spaces>", "<slug-value>", "<newline>"]],
-  "<slug-value>": [["The Beach at S%C3%A8te"], ["<string>"]],
+  "<slug-value>": [["The Beach at S%C3%A8te"], ["<!string.string>"]],
   "<te>": [["TE:", "<!string.spaces>", "<te-encodings>", "<newline>"]],
   "<te-encodings>": [["<te-encoding>"], ["<te-encoding>", ",", "<te-encoding>"]],
   "<te-encoding>": [["<te-encoding-name>", ";", "<quality>"]],
   "<te-encoding-name>": [["gzip"], ["compress"], ["deflate"], ["br"], ["identity"], ["chunked"], ["trailers"]],
   "<timeout>": [["Timeout:", "<!string.spaces>", "<timeout-values>", "<newline>"]],
   "<timeout-values>": [["<timeout-value>"], ["<timeout-value>", ",", "<timeout-value>"]],
-  "<timeout-value>": [["Infinite"], ["Second-4100000000"], ["Second-", "<!numbers.number>"], ["<time-units>", "-", "<!numbers.number>"]],
+  "<timeout-value>": [
+    ["Infinite"],
+    ["Second-4100000000"],
+    ["Second-", "<!numbers.number>"],
+    ["<time-units>", "-", "<!numbers.number>"]
+  ],
   "<time-units>": [["Seconds", "Hours", "Days"]],
   "<topic>": [["Topic:", "<!string.spaces>", "<topic-value>", "<newline>"]],
-  "<topic-value>": [["upd"], ["<string>"]],
+  "<topic-value>": [["upd"], ["<!string.string>"]],
   "<trailer>": [["Trailer:", "<!string.spaces>", "<trailer-value>", "!<!string.spaces>", "<newline>"]],
   "<trailer-value>": [["<http-header-names>"], ["<!string.component-string>"]],
   "<transfer-encoding>": [
@@ -413,7 +508,7 @@
     ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:104.0) Gecko/20100101 Firefox/104.0"],
     ["Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.102 Safari/537.36 OPR/90.0.4480.84"],
     ["whatever/13.37"],
-    ["<string>"]
+    ["<!string.string>"]
   ],
   "<via>": [["Via:", "<!string.spaces>", "<via-values>", "<newline>"]],
   "<via-values>": [["<via-value>"], ["<via-value>", ",", "<via-values>"]],
@@ -421,28 +516,77 @@
     ["<http-version-nums>", " fred"],
     ["<http-version-nums>", " whatever.example.com"],
     ["<http-version-nums>", " example.com"],
-    ["<http-version-nums>", " ", "<uri-hostname>"]
+    ["<http-version-nums>", " ", "<!url.uri-hostname>"]
   ],
-  "<body-start>": [["<chunked-body>"], ["<urlencoded>"], ["<string>"], ["<base64>"]],
-  "<chunked-body>": [
-    ["<chunk-list>", "<last-chunk>", "<newline>"],
-    ["<chunk-list>", "<last-chunk>", "<http-trailer-part>", "<newline>"]
+  "<content-type>": [["Content-Type", "<!string.spaces>", ":", "<!string.spaces>", "<mime-type-subtype>", "<newline>"]],
+  "<server>": [["Server", "<!string.spaces>", ":", "<!string.spaces>", "<!string.string>", "<newline>"]],
+  "<vary>": [["Vary", "<!string.spaces>", ":", "<!string.spaces>", "<http-header-names>", "<newline>"]],
+  "<x-cache>": [["X-Cache: HIT\r\n"], ["X-Cache", "<!string.string>", "<newline>"]],
+  "<age>": [["Age", "<!string.spaces>", ":", "<!string.spaces>", "<!numbers.number>", "<newline>"]],
+  "<random-header>": [
+    ["<!string.component-string>", "<!string.spaces>", ":", "!<!string.spaces>", "<!string.string>", "<newline>"]
   ],
-  "<chunk-list>": [["<chunk>"], ["<chunk>", "<newline>", "<chunk-list>"]],
-  "<chunk>": [
-    ["<chunk-size>", "<chunk-extension>", "<newline>", "<chunk-data>", "<newline>"],
-    ["<chunk-size>", "<newline>", "<chunk-data>", "<newline>"]
-  ],
-  "<chunk-size>": [["4"], ["128"], ["<!numbers.number>"]],
-  "<chunk-extension>": [[";foo=bar"], [";", "<uri-params-list>"]],
-  "<chunk-data>": [["AAAA"], ["BBBB"], ["<string>"], ["<base64>"]],
-  "<last-chunk>": [["0", "<chunk-extension>", "<newline>"], ["0", "<newline>"]],
-  "<http-trailer-part>": [
-    ["Transfer-Encoding: chunked\r\n"],
-    ["Transfer-Encoding: identity\r\n"],
-    ["Content-Length: 180\r\n"],
-    ["Content-Length: ", "<!numbers.number>", "\r\n"],
-    ["Bar: Foo\r\n"]
-  ],
-  "<random-header>": [["<!string.component-string>", "<!string.spaces>", ":", "!<!string.spaces>", "<string>", "<newline>"]]
+  "<valid-status-code>": [
+    ["100 Continue"],
+    ["101 Switching Protocols"],
+    ["102 Processing"],
+    ["103 Early Hints"],
+    ["200 OK"],
+    ["201 Created"],
+    ["202 Accepted"],
+    ["203 Non-Authoritative Information"],
+    ["204 No Content"],
+    ["205 Reset Content"],
+    ["206 Partial Content"],
+    ["207 Multi-Status"],
+    ["208 Already Reported"],
+    ["226 IM Used"],
+    ["300 Multiple Choices"],
+    ["301 Moved Permanently"],
+    ["302 Found"],
+    ["303 See Other"],
+    ["304 Not Modified"],
+    ["307 Temporary Redirect"],
+    ["308 Permanent Redirect"],
+    ["400 Bad Request"],
+    ["401 Unauthorized"],
+    ["402 Payment Required"],
+    ["403 Forbidden"],
+    ["404 Not Found"],
+    ["405 Method Not Allowed"],
+    ["406 Not Acceptable"],
+    ["407 Proxy Authentication Required"],
+    ["408 Request Timeout"],
+    ["409 Conflict"],
+    ["410 Gone"],
+    ["411 Length Required"],
+    ["412 Precondition Failed"],
+    ["413 Content Too Large"],
+    ["414 URI Too Long"],
+    ["415 Unsupported Media Type"],
+    ["416 Range Not Satisfiable"],
+    ["417 Expectation Failed"],
+    ["418 I'm a teapot"],
+    ["421 Misdirected Request"],
+    ["422 Unprocessable Content"],
+    ["423 Locked"],
+    ["424 Failed Dependency"],
+    ["425 Too Early"],
+    ["426 Upgrade Required"],
+    ["428 Precondition Required"],
+    ["429 Too Many Requests"],
+    ["431 Request Header Fields Too Large"],
+    ["451 Unavailable For Legal Reasons"],
+    ["500 Internal Server Error"],
+    ["501 Not Implemented"],
+    ["502 Bad Gateway"],
+    ["503 Service Unavailable"],
+    ["504 Gateway Timeout"],
+    ["505 HTTP Version Not Supported"],
+    ["506 Variant Also Negotiates"],
+    ["507 Insufficient Storage"],
+    ["508 Loop Detected"],
+    ["510 Not Extended"],
+    ["511 Network Authentication Required"]
+  ]
 }

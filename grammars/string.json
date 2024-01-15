@@ -127,7 +127,7 @@
     ["<chars>", "<string>"],
     ["<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<chars>", "<string>"]
   ],
-  "<b64-chars>": [["<lowercase>"], ["<uppercase>"], ["<!number.digit>"], ["+"], ["/"]],
+  "<b64-chars>": [["<lowercase>"], ["<uppercase>"], ["<!numbers.digit>"], ["+"], ["/"]],
   "<b64-padding>": [["="], ["=="]],
   "<base64>": [["<b64-chars>"], ["<b64-chars>", "<b64-padding>"], ["<b64-chars>", "<base64>"]],
   "<component-string>": [["<lowercase>", "<component-string-1>"], ["<uppercase>", "<component-string-1>"]],
@@ -144,10 +144,34 @@
       "<component-string-1>"
     ]
   ],
-  "<component-string-chars>": [["<lowercase>"], ["<uppercase>"], ["<!number.digit>"], ["-"]],
-  "<urlencoded-chars>": [["<lowercase>"], ["<uppercase>"], ["<!number.digit>"], ["-"], ["<urlencoded-percent>"]],
-  "<urlencoded-percent>": [["%", "<single-hex-digit>", "<single-hex-digit>"]],
-  "<urlencoded>": [["<urlencoded-chars>"], ["<urlencoded-chars>", "<urlencoded>"]],
+  "<component-string-chars>": [["<lowercase>"], ["<uppercase>"], ["<!numbers.digit>"], ["-"]],
+  "<urlencoded-chars>": [["<lowercase>"], ["<uppercase>"], ["<!numbers.digit>"], ["-"], ["<urlencoded-percent>"]],
+  "<urlencoded-percent>": [["%", "<!numbers.hexdigit>", "<!numbers.hexdigit>"]],
+  "<urlencoded>": [
+    ["<urlencoded-chars>"],
+    [
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>"
+    ],
+    ["<urlencoded-chars>", "<urlencoded>"],
+    [
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded-chars>",
+      "<urlencoded>"
+    ]
+  ],
   "<date>": [
     ["Sun, 06 Nov 1994 08:49:37 GMT"],
     ["Sun, 06 Nov 2094 08:49:37 GMT"],
@@ -174,23 +198,24 @@
     ["99999"],
     ["0"],
     ["-1999"],
-    ["<!number.digit>", "<!number.digit>", "<!number.digit>", "<!number.digit>"]
+    ["<!numbers.digit>", "<!numbers.digit>", "<!numbers.digit>", "<!numbers.digit>"],
+    ["<!numbers.digits>"]
   ],
   "<time>": [
     ["08:49:37"],
     ["00:00:00"],
     ["01:01:01"],
     ["11:11:11"],
-    ["<!number.digit>", "<!number.digit>", ":", "<!number.digit>", "<!number.digit>", ":"],
+    ["<!numbers.digit>", "<!numbers.digit>", ":", "<!numbers.digit>", "<!numbers.digit>", ":"],
     [
-      "<!number.digit>",
-      "<!number.digit>",
+      "<!numbers.digit>",
+      "<!numbers.digit>",
       ":",
-      "<!number.digit>",
-      "<!number.digit>",
+      "<!numbers.digit>",
+      "<!numbers.digit>",
       ":",
-      "<!number.digit>",
-      "<!number.digit>"
+      "<!numbers.digit>",
+      "<!numbers.digit>"
     ]
   ]
 }

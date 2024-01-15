@@ -1,0 +1,10 @@
+{
+  "<start>": [["<response-line>", "<!http.headers-start>", "<!http.body-start>"]],
+  "<response-line>": [["<!http.http-version>", "<!string.spaces>", "<status-code>", "<newline>"]],
+  "<status-code>": [
+    ["<!http.valid-status-code>", "<newline>"],
+    ["<!numbers.digits>", "<!string.spaces>", "<!string.string>", "<newline>"],
+    ["<!numbers.digit>", "<!numbers.digit>", "<!numbers.digit>", "<!string.spaces>", "<!string.string>", "<newline>"]
+  ],
+  "<newline>": [["\r\n"]]
+}
