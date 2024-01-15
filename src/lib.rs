@@ -335,6 +335,11 @@ impl GrammarGenerator {{
                     }
                 }
                 Fragment::Terminal(value) => {
+                    let as_str = String::from_utf8_lossy(value);
+                    if !as_str.contains("*") {
+                        program += &format!("        /* {:?} */", as_str);
+                    }
+                    /* {:?} */
                     if value.len() == 1 {
                         program += &format!("        buf.push({:?});\n", value[0]);
                     } else {
