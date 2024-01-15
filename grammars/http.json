@@ -346,7 +346,7 @@
     ["SID=31d4d96e407aad42"],
     ["PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"],
     ["<!string.component-string>", "=", "<!string.component-string>"],
-    ["<!string.component-string>", "=", "<!url.uri-params-string>"],
+    ["<!string.component-string>", "=", "<!url.uri-params-list>"],
     ["<!string.component-string>", "=", "<!string.base64>"]
   ],
   "<last-modified>": [["Last-Modified", "<!string.spaces>", ":", "<!string.spaces>", "<!string.date>", "<newline>"]],
