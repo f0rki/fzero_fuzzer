@@ -12,13 +12,11 @@ lazy_static! {
     static ref STRING: GrammarRust = {
         let bytes = include_bytes!("../grammars/string.json");
         let grammar: Grammar = serde_json::from_slice(bytes).unwrap();
-        println!("loading string grammar");
         GrammarRust::construct(&grammar)
     };
     static ref NUMBERS: GrammarRust = {
         let bytes = include_bytes!("../grammars/numbers.json");
         let grammar: Grammar = serde_json::from_slice(bytes).unwrap();
-        println!("loading numbers grammar");
         GrammarRust::construct(&grammar)
     };
     static ref URL: GrammarRust = {
