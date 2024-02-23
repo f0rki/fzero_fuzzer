@@ -8,7 +8,7 @@ mod builtins;
 /// Representation of a grammar file in a Rust structure. This allows us to
 /// use Serde to serialize and deserialize the json grammar files
 #[derive(Serialize, Deserialize, Default, Debug)]
-pub struct Grammar(BTreeMap<String, Vec<Vec<String>>>);
+pub struct Grammar(pub BTreeMap<String, Vec<Vec<String>>>);
 
 /// A strongly typed wrapper around a `usize` which selects different fragment
 /// identifiers
@@ -66,7 +66,9 @@ impl GrammarRust {
         let mut ret = Self::construct(grammar);
 
         // Resolve the start node
-        ret.start = Some(ret.name_to_fragment[start_fragment]);
+        ret.start = Some(*ret.name_to_fragment.get(start_fragment).expect(&format!(
+            "starting rule '{start_fragment}' must be part of the grammar"
+        )));
 
         ret
     }
@@ -81,7 +83,8 @@ impl GrammarRust {
             // Make sure that there aren't duplicates of fragment names
             assert!(
                 !ret.name_to_fragment.contains_key(non_term),
-                "Duplicate non-terminal definition, fail"
+                "Invalid Grammar: Duplicate non-terminal definition '{:?}'",
+                non_term
             );
 
             // Create a new, empty fragment
@@ -254,12 +257,10 @@ impl GrammarRust {
         self.fragments = new_fragments;
     }
 
-    /// Generate a new Rust program that can be built and will generate random
-    /// inputs and benchmark them
-    pub fn program<P: AsRef<Path>>(&self, path: P, max_depth: usize) {
+    /// generator rust code
+    pub fn rust_codegen(&self, name: &str, max_depth: usize) -> String {
         let mut program = String::new();
 
-        let mut terminal_count = 0usize;
         let mut terminal_list = String::new();
         let mut seen_terminals = HashSet::new();
         for fragment in self.fragments.iter() {
@@ -267,7 +268,6 @@ impl GrammarRust {
                 let s = String::from_utf8_lossy(data);
                 if !seen_terminals.contains(&s) {
                     terminal_list += &format!("{:?}, ", s);
-                    terminal_count += 1;
                     seen_terminals.insert(s);
                 }
             }
@@ -277,18 +277,15 @@ impl GrammarRust {
         // is used for testing.
         program += &format!(
             r#"
-#![allow(unused)]
 use std::cell::Cell;
 use rand::Rng;
 
-pub struct GrammarGenerator;
+pub struct {name};
 
-pub static TERMINALS: [&'static str; {}] = [{}];
-
-impl GrammarGenerator {{
+impl {name} {{
 
     pub fn terminals() -> &'static [&'static str] {{
-        return &TERMINALS;
+        return &[{terminal_list}];
     }}
 
     pub fn generate_into(out: &mut Vec<u8>, max_depth: Option<usize>, rng: &mut impl Rng) {{
@@ -302,9 +299,9 @@ impl GrammarGenerator {{
         out
     }}
 "#,
-            terminal_count,
-            terminal_list,
-            self.start.unwrap().0,
+            self.start
+                .expect("Require a starting rule for the grammar")
+                .0,
             max_depth
         );
 
@@ -390,6 +387,13 @@ impl GrammarGenerator {{
             program += "    }\n";
         }
         program += "}\n";
+
+        program
+    }
+
+    /// Generate rust code and write to given file.
+    pub fn program<P: AsRef<Path>>(&self, path: P, max_depth: usize) {
+        let program = self.rust_codegen("GrammarGenerator", max_depth);
 
         // Write out the test application
         std::fs::write(path, program).expect("Failed to create output Rust application");
