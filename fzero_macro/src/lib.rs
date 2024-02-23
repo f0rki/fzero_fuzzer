@@ -91,7 +91,7 @@ pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
         let mut current_rule = vec![];
 
         for tt in grp.stream().into_iter() {
-            eprintln!("{state:?} -> peek {:?}", tt);
+            // eprintln!("{state:?} -> peek {:?}", tt);
 
             match state {
                 ParseState::RuleIdent => {
@@ -129,12 +129,12 @@ pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
                             let mut expecting_ident = true;
                             for tok in grp.stream().into_iter() {
                                 if expecting_ident {
-                                    eprintln!("rule content: {:?}", tok);
+                                    // eprintln!("rule content: {:?}", tok);
                                     if let TokenTree::Ident(i) = tok {
                                         current_rule.push(format!("<{}>", i.to_string()));
                                         expecting_ident = false;
-                                    } else if let TokenTree::Literal(t) = &tok {
-                                        eprintln!("literal: {}", t.to_string());
+                                    } else if let TokenTree::Literal(_) = &tok {
+                                        // eprintln!("literal: {}", t.to_string());
                                         use litrs::Literal;
                                         let lit = Literal::try_from(&tok)
                                             .expect("failed to parse literal with litrs");
@@ -158,7 +158,7 @@ pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
                                             // Literal::Byte(lit) => { /* ... */ }
                                             // Literal::ByteString(lit) => { /* ... */ }
                                         };
-                                        eprintln!("literal: {:?}", slit);
+                                        // eprintln!("literal: {:?}", slit);
                                         current_rule.push(slit);
                                         expecting_ident = false;
                                     } else {
@@ -202,7 +202,7 @@ pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
                                 rule_contents.push(current_rule.clone());
                             }
 
-                            eprintln!("Adding rule {:?}: {:?}", rule_name, rule_contents);
+                            // eprintln!("Adding rule {:?}: {:?}", rule_name, rule_contents);
 
                             if grammar
                                 .0
@@ -242,9 +242,9 @@ pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
 
     assert!(matches!(iter.next(), None));
 
-    for (name, rule) in grammar.0.iter() {
-        eprintln!("{:?}: {:?}", name, rule);
-    }
+    // for (name, rule) in grammar.0.iter() {
+    //     eprintln!("{:?}: {:?}", name, rule);
+    // }
 
     let mut gram = GrammarRust::new(&grammar, Some(&entrypoints[0]));
     gram.optimize();
