@@ -11,11 +11,11 @@ fn main() -> std::io::Result<()> {
     }
 
     // Load up a grammar file
-    let grammar: Grammar = serde_json::from_slice(&std::fs::read(&args[1])?)?;
+    let grammar: JsonGrammar = serde_json::from_slice(&std::fs::read(&args[1])?)?;
     log::info!("Loaded grammar json; parsing grammar into in-memory format.");
 
     // Convert the grammar file to the Rust structures
-    let mut gram = GrammarRust::new(&grammar, None);
+    let mut gram = FGrammarBuilder::from_json_grammar(&grammar, None).construct();
     log::info!("Converted grammar to in-memory format; optimizing now.");
 
     // Optimize the grammar

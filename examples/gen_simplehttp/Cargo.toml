@@ -10,6 +10,6 @@ rand = "0.8.5"
 rand_pcg = "0.3.1"
 
 [build-dependencies]
-fzero = { path = "../../" }
+fzero_gen = { path = "../../fzero_gen/" }
 serde = { version = "1", features = ["derive"]}
 serde_json = "1"

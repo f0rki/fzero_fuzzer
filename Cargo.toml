@@ -4,4 +4,5 @@ members = [
     "bufrng",
     "fzero_gen",
     "fzero_macro",
+    "examples/gen_simplehttp",
 ]

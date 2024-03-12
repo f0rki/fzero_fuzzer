@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 mod builtins;
@@ -8,47 +8,63 @@ mod builtins;
 /// Representation of a grammar file in a Rust structure. This allows us to
 /// use Serde to serialize and deserialize the json grammar files
 #[derive(Serialize, Deserialize, Default, Debug)]
-pub struct Grammar(pub BTreeMap<String, Vec<Vec<String>>>);
+pub struct JsonGrammar(pub BTreeMap<String, Vec<Vec<String>>>);
 
 /// A strongly typed wrapper around a `usize` which selects different fragment
 /// identifiers
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FragmentId(usize);
+
+// #[derive(Clone, Copy, Debug)]
+// pub struct TerminalId(usize);
 
 /// A fragment which is specified by the grammar file
 #[derive(Clone, Debug)]
 pub enum Fragment {
     /// A non-terminal fragment which refers to a list of `FragmentId`s to
-    /// randomly select from for expansion
+    /// randomly select from for expansion, i.e., this is a production rule:
+    /// `A → B | 'c'`
     NonTerminal(Vec<FragmentId>),
 
-    /// A list of `FragmentId`s that should be expanded in order
+    /// A list of `FragmentId`s that should be expanded in order. This is one of the options on the
+    /// right-hand side of a production rule. For example, for the rule `A → B C | 'c'`, we have two
+    /// expressions associated with the non-terminal `A`, `B C` and `'c'`.
     Expression(Vec<FragmentId>),
 
     /// A terminal fragment which simply should expand directly to the
-    /// contained vector of bytes
+    /// contained vector of bytes.
     Terminal(Vec<u8>),
+
+    /// A script object, which has associated code.
+    Script(Vec<FragmentId>, String),
 
     /// A fragment which does nothing. This is used during optimization passes
     /// to remove fragments with no effect.
     Nop,
 
-    /// A fragment that is not reachable
+    /// A fragment that is not reachable. This is used during optimization to remove dead code,
+    /// i.e., fragments that become unreachable during optimization. This allows us to reduce the
+    /// amount of code we emit.
     Unreachable,
 }
 
 /// A grammar representation in Rust that is designed to be easy to work with
 /// in-memory and optimized for code generation.
 #[derive(Debug, Default)]
-pub struct GrammarRust {
+pub struct FGrammar {
     /// All types
     fragments: Vec<Fragment>,
 
     /// Cached fragment identifier for the start node
-    start: Option<FragmentId>,
+    entry_points: Vec<(String, FragmentId)>,
 
+    // /// list of terminals
+    // terminals: Vec<Vec<u8>>,
     /// Mapping of non-terminal names to fragment identifers
-    name_to_fragment: BTreeMap<String, FragmentId>,
+    name_to_fragment: HashMap<String, FragmentId>,
+
+    /// do not emit recursion check for these fragments
+    skip_recursion_check: HashSet<FragmentId>,
 
     /// If this is `true` then the output file we generate will not emit any
     /// unsafe code. I'm not aware of any bugs with the unsafe code that I use and
@@ -57,97 +73,446 @@ pub struct GrammarRust {
     pub safe_only: bool,
 }
 
-impl GrammarRust {
-    /// Create a new Rust version of a `Grammar` which was loaded via a
-    /// grammar json specification.
-    pub fn new(grammar: &Grammar, start_fragment: Option<&str>) -> Self {
-        let start_fragment = start_fragment.unwrap_or("<start>");
+#[derive(Debug, Clone)]
+pub enum FGrammarIdent {
+    Ident(String),
+    Data(Vec<u8>),
+    ModuleIdent(String, String),
+}
 
-        let mut ret = Self::construct(grammar);
+#[derive(Debug, Clone)]
+pub struct FGrammarScriptCode(pub String);
 
-        // Resolve the start node
-        ret.start = Some(*ret.name_to_fragment.get(start_fragment).expect(&format!(
-            "starting rule '{start_fragment}' must be part of the grammar"
-        )));
+#[derive(Debug, Clone)]
+pub enum FGrammarRule {
+    ProdRule(Vec<Vec<FGrammarIdent>>),
+    ScriptRule(FGrammarScriptCode, Vec<String>),
+}
 
-        ret
+/// Facilitate incremental building of a grammar.
+#[derive(Debug, Clone, Default)]
+pub struct FGrammarBuilder {
+    rules: BTreeMap<String, FGrammarRule>,
+    entrypoints: Vec<String>,
+}
+
+impl FGrammarBuilder {
+    /// add a terminal rule, i.e., a rule that produces only a single value.
+    ///
+    /// ```ignore
+    /// A → 'a'
+    /// ```
+    pub fn add_terminal(&mut self, ident: &str, data: &[u8]) {
+        use std::collections::btree_map::Entry;
+        let ident = ident.to_string();
+        match self.rules.entry(ident) {
+            Entry::Vacant(entry) => {
+                entry.insert(FGrammarRule::ProdRule(vec![vec![FGrammarIdent::Data(
+                    data.to_vec(),
+                )]]));
+            }
+            Entry::Occupied(mut entry) => {
+                let rules = entry.get_mut();
+                if let FGrammarRule::ProdRule(ref mut rules) = rules {
+                    rules.push(vec![FGrammarIdent::Data(data.to_vec())]);
+                } else {
+                    panic!("cannot add terminal to non Production rule");
+                }
+            }
+        };
     }
 
-    fn construct(grammar: &Grammar) -> Self {
+    /// Builder pattern of [`Self::add_terminal`].
+    pub fn with_terminal(mut self, ident: &str, data: &[u8]) -> Self {
+        self.add_terminal(ident, data);
+        self
+    }
+
+    /// add multiple terminals, i.e., you have a rule that expands to one of multiple terminal
+    /// symbols.
+    ///
+    /// ```ignore
+    /// A → 'a' | 'b' | 'c'
+    /// ```
+    pub fn add_terminals(&mut self, ident: &str, data: &[&[u8]]) {
+        use std::collections::btree_map::Entry;
+        let ident = ident.to_string();
+        let data_vec = data
+            .into_iter()
+            .map(|d| vec![FGrammarIdent::Data(d.to_vec())])
+            .collect();
+        match self.rules.entry(ident) {
+            Entry::Vacant(entry) => {
+                entry.insert(FGrammarRule::ProdRule(data_vec));
+            }
+            Entry::Occupied(mut entry) => {
+                let rules = entry.get_mut();
+                if let FGrammarRule::ProdRule(ref mut rules) = rules {
+                    rules.extend_from_slice(&data_vec);
+                } else {
+                    panic!("cannot add terminal to non Production rule");
+                }
+            }
+        };
+    }
+
+    /// Builder pattern of [`Self::add_terminals`].
+    pub fn with_terminals(mut self, ident: &str, data: &[&[u8]]) -> Self {
+        self.add_terminals(ident, data);
+        self
+    }
+
+    /// Add an expression, a rule that only consists of other non-terminals that are expanded in
+    /// order.
+    ///
+    /// ```ignore
+    /// A → B C D
+    /// ```
+    pub fn add_expression(&mut self, ident: &str, rule: &[&str]) {
+        use std::collections::btree_map::Entry;
+        let ident = ident.to_string();
+        let frule = rule
+            .into_iter()
+            .map(|id| FGrammarIdent::Ident(id.to_string()))
+            .collect();
+        match self.rules.entry(ident) {
+            Entry::Vacant(entry) => {
+                entry.insert(FGrammarRule::ProdRule(vec![frule]));
+            }
+            Entry::Occupied(mut entry) => {
+                let rules = entry.get_mut();
+                if let FGrammarRule::ProdRule(ref mut rules) = rules {
+                    rules.push(frule);
+                } else {
+                    panic!("cannot add terminal to non Production rule");
+                }
+            }
+        }
+    }
+
+    /// Builder pattern of [`Self::add_expression`].
+    pub fn with_expression(mut self, ident: &str, rule: &[&str]) -> Self {
+        self.add_expression(ident, rule);
+        self
+    }
+
+    /// Add a production rule.
+    ///
+    /// ```ignore
+    /// A → B | C | 'term'
+    /// ```
+    pub fn add_rule(&mut self, ident: &str, rule: &[FGrammarIdent]) {
+        use std::collections::btree_map::Entry;
+        let ident = ident.to_string();
+        let frule = rule.to_vec();
+        match self.rules.entry(ident) {
+            Entry::Vacant(entry) => {
+                entry.insert(FGrammarRule::ProdRule(vec![frule]));
+            }
+            Entry::Occupied(mut entry) => {
+                let rules = entry.get_mut();
+                if let FGrammarRule::ProdRule(ref mut rules) = rules {
+                    rules.push(frule);
+                } else {
+                    panic!("cannot add terminal to non Production rule");
+                }
+            }
+        }
+    }
+
+    /// Builder pattern of [`Self::add_rule`].
+    pub fn with_rule(mut self, ident: &str, rule: &[FGrammarIdent]) -> Self {
+        self.add_rule(ident, rule);
+        self
+    }
+
+    /// Add a script rule to handle more than a context-free grammar could.
+    pub fn add_script<T: AsRef<str>>(&mut self, ident: &str, code: String, args: &[T]) {
+        let res = self.rules.insert(
+            ident.to_string(),
+            FGrammarRule::ScriptRule(
+                FGrammarScriptCode(code.to_string()),
+                args.into_iter().map(|id| id.as_ref().to_string()).collect(),
+            ),
+        );
+        if res.is_some() {
+            panic!("overwriting existing rule '{}' with script rule!", ident);
+        }
+    }
+
+    /// Builder pattern of [`Self::add_script`].
+    pub fn with_script(mut self, ident: &str, code: String, args: &[&str]) -> Self {
+        self.add_script(ident, code, args);
+        self
+    }
+
+    /// Mark a certain production rule as starting point for the grammar.
+    pub fn add_entrypoint(&mut self, entrypoint: &str) {
+        self.entrypoints.push(entrypoint.to_string());
+    }
+
+    /// Builder pattern of [`Self::add_entrypoint`].
+    pub fn with_entrypoint(mut self, entrypoint: &str) -> Self {
+        self.add_entrypoint(entrypoint);
+        self
+    }
+
+    /// Construct unoptimized [`FGrammar`] structure.
+    pub fn construct(&self) -> FGrammar {
         // Create a new grammar structure
-        let mut ret = GrammarRust::default();
+        let mut ret = FGrammar::default();
         ret.safe_only = false;
 
         // Parse the input grammar to resolve all fragment names
-        for (non_term, _) in grammar.0.iter() {
-            // Make sure that there aren't duplicates of fragment names
-            assert!(
-                !ret.name_to_fragment.contains_key(non_term),
-                "Invalid Grammar: Duplicate non-terminal definition '{:?}'",
-                non_term
-            );
-
-            // Create a new, empty fragment
+        for (non_term, _) in self.rules.iter() {
             let fragment_id = ret.allocate_fragment(Fragment::NonTerminal(Vec::new()));
 
             // Add the name resolution for the fragment
             ret.name_to_fragment.insert(non_term.clone(), fragment_id);
         }
 
-        // Parse the input grammar
-        for (non_term, fragments) in grammar.0.iter() {
-            // Get the non-terminal fragment identifier
-            let fragment_id = ret.name_to_fragment[non_term];
+        for entry in self.entrypoints.iter() {
+            let fragment_id = *ret.name_to_fragment.get(entry).expect(&format!(
+                "Specified entrypoint {:?} must be part of the grammar.",
+                &entry
+            ));
+            ret.entry_points.push((entry.to_string(), fragment_id));
+        }
 
+        // Parse the input grammar
+        for (non_term, rule_content) in self.rules.iter() {
             // Create a vector to hold all of the variants possible under this
             // non-terminal fragment
             let mut variants = Vec::new();
 
-            // Go through all sub-fragments
-            for js_sub_fragment in fragments {
-                // Different options for this sub-fragment
-                let mut options = Vec::new();
+            match rule_content {
+                FGrammarRule::ScriptRule(code, args) => {
+                    let mut arg_fragments = Vec::with_capacity(args.len());
+                    for arg in args {
+                        let fragment_id = if let Some(&non_terminal) = ret.name_to_fragment.get(arg)
+                        {
+                            // If we can resolve the name of this fragment, it is a
+                            // non-terminal fragment and should be allocated as
+                            // such
+                            ret.allocate_fragment(Fragment::NonTerminal(vec![non_terminal]))
+                        } else if let Some(id) = builtins::load_if_builtin(arg, &mut ret) {
+                            id
+                        } else {
+                            panic!("Script argument is unknown non-terminal");
+                        };
+                        arg_fragments.push(fragment_id);
+                    }
+                    variants.push(
+                        ret.allocate_fragment(Fragment::Script(arg_fragments, code.0.clone())),
+                    );
+                }
+                FGrammarRule::ProdRule(fragments) => {
+                    for js_sub_fragment in fragments {
+                        // Different options for this sub-fragment
+                        let mut options = Vec::new();
 
-                // Go through each option in the sub-fragment
-                for option in js_sub_fragment {
-                    let fragment_id = if let Some(&non_terminal) = ret.name_to_fragment.get(option)
-                    {
-                        // If we can resolve the name of this fragment, it is a
-                        // non-terminal fragment and should be allocated as
-                        // such
-                        ret.allocate_fragment(Fragment::NonTerminal(vec![non_terminal]))
-                    } else if let Some(id) = builtins::load_if_builtin(option, &mut ret) {
-                        id
-                    } else {
-                        if option.starts_with("<") && option.ends_with(">") {
-                            log::warn!("using a string that looks like a rule identifier ({:?}) as byte literal; check whether your grammar is correct!", option);
+                        // Go through each option in the sub-fragment
+                        for option in js_sub_fragment {
+                            let fragment_id = match option {
+                                FGrammarIdent::Data(data) => {
+                                    ret.allocate_fragment(Fragment::Terminal(data.clone()))
+                                }
+                                FGrammarIdent::Ident(nonterm_name) => {
+                                    if let Some(&non_terminal) =
+                                        ret.name_to_fragment.get(nonterm_name)
+                                    {
+                                        // If we can resolve the name of this fragment, it is a
+                                        // non-terminal fragment and should be allocated as
+                                        // such
+                                        ret.allocate_fragment(Fragment::NonTerminal(vec![
+                                            non_terminal,
+                                        ]))
+                                    } else if let Some(id) =
+                                        builtins::load_if_builtin(nonterm_name, &mut ret)
+                                    {
+                                        id
+                                    } else {
+                                        panic!("got an identifier that cannot be resolved!")
+                                    }
+                                }
+                                FGrammarIdent::ModuleIdent(module, id) => {
+                                    // TODO: bit of a hack to load builtin grammars
+                                    let x = format!("<!{module}.{id}>");
+                                    if let Some(id) = builtins::load_if_builtin(&x, &mut ret) {
+                                        id
+                                    } else {
+                                        panic!(
+                                            "invalid module identifier: {:?}.{:?} ({:?})",
+                                            module, id, &x
+                                        );
+                                    }
+                                }
+                            };
+
+                            // Push this fragment as an option
+                            options.push(fragment_id);
                         }
 
-                        // Convert the terminal bytes into a vector and
-                        // create a new fragment containing it
-                        ret.allocate_fragment(Fragment::Terminal(option.as_bytes().to_vec()))
-                    };
-
-                    // Push this fragment as an option
-                    options.push(fragment_id);
+                        // Create a new fragment of all the options
+                        variants.push(ret.allocate_fragment(Fragment::Expression(options)));
+                    }
                 }
-
-                // Create a new fragment of all the options
-                variants.push(ret.allocate_fragment(Fragment::Expression(options)));
             }
 
+            // Get the non-terminal fragment identifier
+            let fragment_id = ret.name_to_fragment[non_term];
             // Get access to the fragment we want to update based on the
             // possible variants
             let fragment = &mut ret.fragments[fragment_id.0];
-
-            // Overwrite the terminal definition
+            // Overwrite the definition with the observed variants
             *fragment = Fragment::NonTerminal(variants);
         }
+
+        ret.find_trivial_non_recursives();
 
         ret
     }
 
-    /// Allocate a new fragment identifier and add it to the fragment list
+    /// Build an optimized [`FGrammar`].
+    pub fn build(&self) -> FGrammar {
+        let mut gram = self.construct();
+        gram.optimize();
+        gram
+    }
+
+    /// Parse the rules taken from a [`JsonGrammar`] which was loaded via a
+    /// grammar json specification.
+    pub fn from_json_grammar(grammar: &JsonGrammar, start_fragment: Option<&str>) -> Self {
+        let mut ret = Self::default();
+
+        ret.add_entrypoint(start_fragment.unwrap_or("start"));
+
+        for (non_term, rule) in grammar.0.iter() {
+            for variant in rule.iter() {
+                let mut brule = Vec::with_capacity(variant.len());
+                for v in variant {
+                    if v.starts_with("<") && v.ends_with(">") {
+                        if v.starts_with("<!") {
+                            let option = &v[2..v.len() - 1];
+                            if let Some(point_idx) = option.find(".") {
+                                let (module, rule) = option.split_at(point_idx);
+
+                                brule.push(FGrammarIdent::ModuleIdent(
+                                    module.to_string(),
+                                    rule.to_string(),
+                                ));
+                            } else {
+                                brule.push(FGrammarIdent::Ident(v.clone()));
+                            }
+                        } else {
+                            brule.push(FGrammarIdent::Ident(v.clone()));
+                        }
+                    } else {
+                        brule.push(FGrammarIdent::Data(v.as_bytes().to_vec()));
+                    }
+                }
+                ret.add_rule(non_term, &brule);
+            }
+        }
+
+        ret
+    }
+}
+
+impl FGrammar {
+    /*
+        /// Create a new Rust version of a `Grammar` which was loaded via a
+        /// grammar json specification.
+        pub fn new(grammar: &Grammar, start_fragment: Option<&str>) -> Self {
+            let start_fragment = start_fragment.unwrap_or("<start>");
+
+            let mut ret = Self::construct(grammar);
+
+            // Resolve the start node
+            ret.start = Some(*ret.name_to_fragment.get(start_fragment).expect(&format!(
+                "starting rule '{start_fragment}' must be part of the grammar"
+            )));
+
+            ret
+        }
+
+        fn construct(grammar: &Grammar) -> Self {
+            // Create a new grammar structure
+            let mut ret = FGrammar::default();
+            ret.safe_only = false;
+
+            // Parse the input grammar to resolve all fragment names
+            for (non_term, _) in grammar.0.iter() {
+                // Make sure that there aren't duplicates of fragment names
+                assert!(
+                    !ret.name_to_fragment.contains_key(non_term),
+                    "Invalid Grammar: Duplicate non-terminal definition '{:?}'",
+                    non_term
+                );
+
+                // Create a new, empty fragment
+                let fragment_id = ret.allocate_fragment(Fragment::NonTerminal(Vec::new()));
+
+                // Add the name resolution for the fragment
+                ret.name_to_fragment.insert(non_term.clone(), fragment_id);
+            }
+
+            // Parse the input grammar
+            for (non_term, fragments) in grammar.0.iter() {
+                // Get the non-terminal fragment identifier
+                let fragment_id = ret.name_to_fragment[non_term];
+
+                // Create a vector to hold all of the variants possible under this
+                // non-terminal fragment
+                let mut variants = Vec::new();
+
+                // Go through all sub-fragments
+                for js_sub_fragment in fragments {
+                    // Different options for this sub-fragment
+                    let mut options = Vec::new();
+
+                    // Go through each option in the sub-fragment
+                    for option in js_sub_fragment {
+                        let fragment_id = if let Some(&non_terminal) = ret.name_to_fragment.get(option)
+                        {
+                            // If we can resolve the name of this fragment, it is a
+                            // non-terminal fragment and should be allocated as
+                            // such
+                            ret.allocate_fragment(Fragment::NonTerminal(vec![non_terminal]))
+                        } else if let Some(id) = builtins::load_if_builtin(option, &mut ret) {
+                            id
+                        } else {
+                            if option.starts_with("<") && option.ends_with(">") {
+                                log::warn!("using a string that looks like a rule identifier ({:?}) as byte literal; check whether your grammar is correct!", option);
+                            }
+
+                            // Convert the terminal bytes into a vector and
+                            // create a new fragment containing it
+                            ret.allocate_fragment(Fragment::Terminal(option.as_bytes().to_vec()))
+                        };
+
+                        // Push this fragment as an option
+                        options.push(fragment_id);
+                    }
+
+                    // Create a new fragment of all the options
+                    variants.push(ret.allocate_fragment(Fragment::Expression(options)));
+                }
+
+                // Get access to the fragment we want to update based on the
+                // possible variants
+                let fragment = &mut ret.fragments[fragment_id.0];
+
+                // Overwrite the terminal definition
+                *fragment = Fragment::NonTerminal(variants);
+            }
+
+            ret
+        }
+
+    */
+
+    /// Allocate a new fragment identifier and add it to the fragment list.
     pub fn allocate_fragment(&mut self, fragment: Fragment) -> FragmentId {
         // Get a unique fragment identifier
         let fragment_id = FragmentId(self.fragments.len());
@@ -158,7 +523,36 @@ impl GrammarRust {
         fragment_id
     }
 
-    /// Optimize to remove fragments with non-random effects
+    /// does two passes over all fragments and checks whether they are trivialy non-recursive, i.e.,
+    /// they only expand to rules that expand to terminals or they.
+    pub fn find_trivial_non_recursives(&mut self) {
+        self.skip_recursion_check.clear();
+        // need to do two passes over this.
+        for _ in 0..2 {
+            for idx in 0..self.fragments.len() {
+                let fragmentid = FragmentId(idx);
+                match &self.fragments[idx] {
+                    Fragment::Terminal(_) | Fragment::Nop | Fragment::Unreachable => {
+                        self.skip_recursion_check.insert(fragmentid);
+                    }
+                    Fragment::Expression(expr) | Fragment::NonTerminal(expr) => {
+                        let mut can_skip = true;
+                        for e in expr.iter() {
+                            if !self.skip_recursion_check.contains(e) {
+                                can_skip = false;
+                            }
+                        }
+                        if can_skip {
+                            self.skip_recursion_check.insert(fragmentid);
+                        }
+                    }
+                    Fragment::Script(_, _) => {}
+                }
+            }
+        }
+    }
+
+    /// Optimize to remove fragments with non-random effects.
     pub fn optimize(&mut self) {
         // Keeps track of fragment identifiers which resolve to nops
         let mut nop_fragments = BTreeSet::new();
@@ -216,8 +610,27 @@ impl GrammarRust {
                                 }
                             });
                         }
+
+                        // if expression consist only of terminals, replace with a new terminal that
+                        // is the concatenation of all terminals in the expression.
+                        if expr
+                            .iter()
+                            .all(|item| matches!(self.fragments[item.0], Fragment::Terminal(_)))
+                        {
+                            let mut concatenated = vec![];
+                            for item in expr.iter().copied() {
+                                if let Fragment::Terminal(data) = &self.fragments[item.0] {
+                                    concatenated.extend_from_slice(data);
+                                }
+                            }
+                            self.fragments[idx] = Fragment::Terminal(concatenated);
+                            changed = true;
+                        }
                     }
-                    Fragment::Terminal(_) | Fragment::Nop | Fragment::Unreachable => {
+                    Fragment::Terminal(_)
+                    | Fragment::Nop
+                    | Fragment::Unreachable
+                    | Fragment::Script(_, _) => {
                         // Already maximally optimized
                     }
                 }
@@ -226,10 +639,10 @@ impl GrammarRust {
 
         // only keep reachable fragments around
         let mut new_fragments = Vec::with_capacity(self.fragments.len());
-        // initialize all fragments as Nop fragments
+        // initialize all fragments as unreachable fragments
         new_fragments.resize(self.fragments.len(), Fragment::Unreachable);
         let mut seen_fragments = BTreeSet::new();
-        let mut worklist = vec![self.start.unwrap()];
+        let mut worklist: Vec<FragmentId> = self.entry_points.iter().map(|x| x.1).collect();
 
         // iterate over all fragments and only keep the ones that are reachable
         while !worklist.is_empty() {
@@ -246,19 +659,23 @@ impl GrammarRust {
                 Fragment::Expression(expr) => {
                     worklist.extend(expr.iter().cloned());
                 }
+                Fragment::Script(args, _) => {
+                    worklist.extend(args.iter().cloned());
+                }
                 Fragment::Terminal(_) | Fragment::Nop => {
                     // do nothing
                 }
-
                 Fragment::Unreachable => unreachable!("unreachable fragment reached!!!"),
             }
         }
 
         self.fragments = new_fragments;
+
+        self.find_trivial_non_recursives();
     }
 
     /// generator rust code
-    pub fn rust_codegen(&self, name: &str, max_depth: usize) -> String {
+    pub fn rust_codegen(&self, name: &str, default_max_depth: usize) -> String {
         let mut program = String::new();
 
         let mut terminal_list = String::new();
@@ -273,12 +690,15 @@ impl GrammarRust {
             }
         }
 
-        // Construct the base of the application. This is a profiling loop that
-        // is used for testing.
+        let start = self
+            .entry_points
+            .first()
+            .expect("Require a starting rule for the grammar")
+            .1
+             .0;
+
         program += &format!(
             r#"
-use std::cell::Cell;
-use rand::Rng;
 
 pub struct {name};
 
@@ -288,22 +708,38 @@ impl {name} {{
         return &[{terminal_list}];
     }}
 
-    pub fn generate_into(out: &mut Vec<u8>, max_depth: Option<usize>, rng: &mut impl Rng) {{
-        out.clear();
-        Self::fragment_{}(0, max_depth.unwrap_or({} as usize), out, rng);
+    pub fn generate_into(out: &mut Vec<u8>, max_depth: Option<usize>, rng: &mut impl rand::Rng) {{
+        Self::fragment_{start}(0, max_depth.unwrap_or({} as usize), out, rng);
     }}
 
-    pub fn generate_new(max_depth: Option<usize>, rng: &mut impl Rng) -> Vec<u8> {{
+    pub fn generate_new(max_depth: Option<usize>, rng: &mut impl rand::Rng) -> Vec<u8> {{
         let mut out = Vec::new();
         Self::generate_into(&mut out, max_depth, rng);
         out
     }}
 "#,
-            self.start
-                .expect("Require a starting rule for the grammar")
-                .0,
-            max_depth
+            default_max_depth
         );
+
+        for (start_name, fragment) in self.entry_points.iter() {
+            let fragment = fragment.0;
+            program += &format!(
+                r#"
+
+    pub fn generate_{start_name}_into(out: &mut Vec<u8>, max_depth: Option<usize>, rng: &mut impl rand::Rng) {{
+        Self::fragment_{fragment}(0, max_depth.unwrap_or({} as usize), out, rng);
+    }}
+    
+    pub fn generate_{start_name}_new(max_depth: Option<usize>, rng: &mut impl rand::Rng) -> Vec<u8> {{
+        let mut out = Vec::new();
+        Self::fragment_{fragment}(0, max_depth.unwrap_or({} as usize), &mut out, rng);
+        out
+    }}
+
+                "#,
+                default_max_depth, default_max_depth
+            );
+        }
 
         // Go through each fragment in the list of fragments
         for (id, fragment) in self.fragments.iter().enumerate() {
@@ -312,10 +748,39 @@ impl {name} {{
             }
 
             // Create a new function for this fragment
-            program += &format!("    fn fragment_{}(depth: usize, max_depth: usize, buf: &mut Vec<u8>, rng: &mut impl Rng) {{\n", id);
+            program += &format!("    #[allow(unused)]\nfn fragment_{}(depth: usize, max_depth: usize, buf: &mut Vec<u8>, rng: &mut impl rand::Rng) {{\nuse rand::Rng;\n", id);
 
-            // Add depth checking to terminate on depth exhaustion
-            program.push_str("        if depth >= max_depth { return; }\n");
+            if !self.skip_recursion_check.contains(&FragmentId(id)) {
+                // Add depth checking to terminate on depth exhaustion
+                // program.push_str("        if depth >= max_depth { return; }\n");
+                //
+                program.push_str("        if depth >= max_depth {\n");
+                let mut non_recursing = vec![];
+                if let Fragment::NonTerminal(vars) = fragment {
+                    for var in vars {
+                        if self.skip_recursion_check.contains(var) {
+                            non_recursing.push(*var);
+                        }
+                    }
+                }
+                if !non_recursing.is_empty() {
+                    program += &format!(
+                        "        match rng.gen_range(0..{}) {{\n",
+                        non_recursing.len()
+                    );
+
+                    for (option_id, option) in non_recursing.iter().enumerate() {
+                        program += &format!(
+                            "            {} => Self::fragment_{}(depth + 1, max_depth, buf, rng),\n",
+                            option_id, option.0
+                        );
+                    }
+                    program += &format!("            _ => unreachable!(),\n");
+
+                    program += &format!("        }}\n");
+                }
+                program.push_str("        return; }\n");
+            }
 
             match fragment {
                 Fragment::NonTerminal(options) => {
@@ -380,6 +845,20 @@ impl {name} {{
                         }
                     }
                 }
+                Fragment::Script(args, code) => {
+                    for (argnum, arg) in args.iter().copied().enumerate() {
+                        let arg = arg.0;
+                        program += &format!(
+                            "let mut arg{argnum}_buf = vec![];\n
+                        Self::fragment_{arg}(depth + 1, max_depth, &mut arg{argnum}_buf, rng);\n"
+                        );
+                    }
+                    program += &format!("{code}(buf, &[");
+                    for argnum in 0..args.len() {
+                        program += &format!("&arg{argnum}_buf[..], ");
+                    }
+                    program += "], rng);\n";
+                }
                 Fragment::Nop => {}
                 Fragment::Unreachable => {}
             }
@@ -405,9 +884,8 @@ pub fn generate_lib_from_grammar(
     output_file: impl AsRef<std::path::Path>,
     default_max_depth: Option<usize>,
 ) -> std::io::Result<()> {
-    let grammar: Grammar = serde_json::from_slice(&std::fs::read(grammar_file)?)?;
-    let mut gram = GrammarRust::new(&grammar, None);
-    gram.optimize();
+    let grammar: JsonGrammar = serde_json::from_slice(&std::fs::read(grammar_file)?)?;
+    let gram = FGrammarBuilder::from_json_grammar(&grammar, None).build();
     gram.program(output_file, default_max_depth.unwrap_or(128));
 
     Ok(())

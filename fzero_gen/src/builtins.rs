@@ -6,39 +6,39 @@
 
 use lazy_static::lazy_static;
 
-use crate::{Fragment, FragmentId, Grammar, GrammarRust};
+use crate::{FGrammar, FGrammarBuilder, Fragment, FragmentId, JsonGrammar};
 
 lazy_static! {
-    static ref STRING: GrammarRust = {
+    static ref STRING: FGrammar = {
         let bytes = include_bytes!("../grammars/string.json");
-        let grammar: Grammar = serde_json::from_slice(bytes).unwrap();
-        GrammarRust::construct(&grammar)
+        let grammar: JsonGrammar = serde_json::from_slice(bytes).unwrap();
+        FGrammarBuilder::from_json_grammar(&grammar, None).build()
     };
-    static ref NUMBERS: GrammarRust = {
+    static ref NUMBERS: FGrammar = {
         let bytes = include_bytes!("../grammars/numbers.json");
-        let grammar: Grammar = serde_json::from_slice(bytes).unwrap();
-        GrammarRust::construct(&grammar)
+        let grammar: JsonGrammar = serde_json::from_slice(bytes).unwrap();
+        FGrammarBuilder::from_json_grammar(&grammar, None).build()
     };
-    static ref URL: GrammarRust = {
+    static ref URL: FGrammar = {
         let bytes = include_bytes!("../grammars/url.json");
-        let grammar: Grammar = serde_json::from_slice(bytes).unwrap();
-        GrammarRust::construct(&grammar)
+        let grammar: JsonGrammar = serde_json::from_slice(bytes).unwrap();
+        FGrammarBuilder::from_json_grammar(&grammar, None).build()
     };
-    static ref JSON: GrammarRust = {
+    static ref JSON: FGrammar = {
         let bytes = include_bytes!("../grammars/json.json");
-        let grammar: Grammar = serde_json::from_slice(bytes).unwrap();
-        GrammarRust::construct(&grammar)
+        let grammar: JsonGrammar = serde_json::from_slice(bytes).unwrap();
+        FGrammarBuilder::from_json_grammar(&grammar, None).build()
     };
-    static ref HTTP: GrammarRust = {
+    static ref HTTP: FGrammar = {
         let bytes = include_bytes!("../grammars/http.json");
-        let grammar: Grammar = serde_json::from_slice(bytes).unwrap();
-        GrammarRust::construct(&grammar)
+        let grammar: JsonGrammar = serde_json::from_slice(bytes).unwrap();
+        FGrammarBuilder::from_json_grammar(&grammar, None).build()
     };
 }
 
 fn extend_and_rename(
-    gram: &mut GrammarRust,
-    with: &GrammarRust,
+    gram: &mut FGrammar,
+    with: &FGrammar,
     rename_prefix: &str,
     search_for: &str,
 ) -> FragmentId {
@@ -88,7 +88,19 @@ fn extend_and_rename(
     }
 }
 
-pub fn load_if_builtin(option: &str, gram: &mut GrammarRust) -> Option<FragmentId> {
+pub fn load_builtin(module: &str, rule: &str, gram: &mut FGrammar) -> Option<FragmentId> {
+    let rule = &format!("<{}>", &rule[1..]);
+    match module {
+        "string" => Some(extend_and_rename(gram, &STRING, "<!string.", rule)),
+        "numbers" => Some(extend_and_rename(gram, &NUMBERS, "<!numbers.", rule)),
+        "url" => Some(extend_and_rename(gram, &URL, "<!url.", rule)),
+        "json" => Some(extend_and_rename(gram, &JSON, "<!json.", rule)),
+        "http" => Some(extend_and_rename(gram, &HTTP, "<!http.", rule)),
+        _ => None,
+    }
+}
+
+pub fn load_if_builtin(option: &str, gram: &mut FGrammar) -> Option<FragmentId> {
     if option.starts_with("<!") && option.ends_with(">") {
         let option = &option[2..option.len() - 1];
         if let Some(point_idx) = option.find(".") {
