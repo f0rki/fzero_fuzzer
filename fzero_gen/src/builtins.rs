@@ -12,27 +12,27 @@ lazy_static! {
     static ref STRING: FGrammar = {
         let bytes = include_bytes!("../grammars/string.json");
         let grammar: JsonGrammar = serde_json::from_slice(bytes).unwrap();
-        FGrammarBuilder::from_json_grammar(&grammar, None).build()
+        FGrammarBuilder::from_json_grammar(&grammar, None).construct()
     };
     static ref NUMBERS: FGrammar = {
         let bytes = include_bytes!("../grammars/numbers.json");
         let grammar: JsonGrammar = serde_json::from_slice(bytes).unwrap();
-        FGrammarBuilder::from_json_grammar(&grammar, None).build()
+        FGrammarBuilder::from_json_grammar(&grammar, None).construct()
     };
     static ref URL: FGrammar = {
         let bytes = include_bytes!("../grammars/url.json");
         let grammar: JsonGrammar = serde_json::from_slice(bytes).unwrap();
-        FGrammarBuilder::from_json_grammar(&grammar, None).build()
+        FGrammarBuilder::from_json_grammar(&grammar, None).construct()
     };
     static ref JSON: FGrammar = {
         let bytes = include_bytes!("../grammars/json.json");
         let grammar: JsonGrammar = serde_json::from_slice(bytes).unwrap();
-        FGrammarBuilder::from_json_grammar(&grammar, None).build()
+        FGrammarBuilder::from_json_grammar(&grammar, None).construct()
     };
     static ref HTTP: FGrammar = {
         let bytes = include_bytes!("../grammars/http.json");
         let grammar: JsonGrammar = serde_json::from_slice(bytes).unwrap();
-        FGrammarBuilder::from_json_grammar(&grammar, None).build()
+        FGrammarBuilder::from_json_grammar(&grammar, None).construct()
     };
 }
 

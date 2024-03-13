@@ -227,6 +227,23 @@ impl FGrammarBuilder {
     }
 
     /// Add a script rule to handle more than a context-free grammar could.
+    pub fn add_generator(&mut self, ident: &str, code: String) {
+        let res = self.rules.insert(
+            ident.to_string(),
+            FGrammarRule::ScriptRule(FGrammarScriptCode(code.to_string()), vec![]),
+        );
+        if res.is_some() {
+            panic!("overwriting existing rule '{}' with script rule!", ident);
+        }
+    }
+
+    /// Builder pattern of [`Self::add_script`].
+    pub fn with_generator(mut self, ident: &str, code: String) -> Self {
+        self.add_generator(ident, code);
+        self
+    }
+
+    /// Add a script rule to handle more than a context-free grammar could.
     pub fn add_script<T: AsRef<str>>(&mut self, ident: &str, code: String, args: &[T]) {
         let res = self.rules.insert(
             ident.to_string(),
@@ -385,7 +402,9 @@ impl FGrammarBuilder {
     pub fn from_json_grammar(grammar: &JsonGrammar, start_fragment: Option<&str>) -> Self {
         let mut ret = Self::default();
 
-        ret.add_entrypoint(start_fragment.unwrap_or("start"));
+        if let Some(start) = start_fragment {
+            ret.add_entrypoint(start);
+        }
 
         for (non_term, rule) in grammar.0.iter() {
             for variant in rule.iter() {
@@ -846,18 +865,24 @@ impl {name} {{
                     }
                 }
                 Fragment::Script(args, code) => {
-                    for (argnum, arg) in args.iter().copied().enumerate() {
-                        let arg = arg.0;
-                        program += &format!(
-                            "let mut arg{argnum}_buf = vec![];\n
+                    if args.is_empty() {
+                        // a "script" without any arguments is a generator and we use a different
+                        // calling convention there.
+                        program += &format!("{code}(buf, rng);");
+                    } else {
+                        for (argnum, arg) in args.iter().copied().enumerate() {
+                            let arg = arg.0;
+                            program += &format!(
+                                "let mut arg{argnum}_buf = vec![];\n
                         Self::fragment_{arg}(depth + 1, max_depth, &mut arg{argnum}_buf, rng);\n"
-                        );
+                            );
+                        }
+                        program += &format!("{code}(buf, &[");
+                        for argnum in 0..args.len() {
+                            program += &format!("&arg{argnum}_buf[..], ");
+                        }
+                        program += "], rng);\n";
                     }
-                    program += &format!("{code}(buf, &[");
-                    for argnum in 0..args.len() {
-                        program += &format!("&arg{argnum}_buf[..], ");
-                    }
-                    program += "], rng);\n";
                 }
                 Fragment::Nop => {}
                 Fragment::Unreachable => {}

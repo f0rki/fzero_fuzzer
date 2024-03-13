@@ -1,4 +1,4 @@
-use fzero_gen::{FGrammarBuilder, FGrammarIdent, FGrammarRule, FGrammarScriptCode};
+use fzero_gen::{FGrammarBuilder, FGrammarIdent};
 use proc_macro::{Delimiter, TokenStream, TokenTree};
 
 #[proc_macro]
@@ -93,6 +93,8 @@ pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
             RuleContent,
             Separator,
             Script,
+            Generate,
+            Builtin,
             Exclamation(ExclamationNext),
         }
         let mut state = ParseState::RuleIdent;
@@ -223,15 +225,13 @@ pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
                     );
                 }
                 ParseState::Exclamation(next) => {
+                    // eprintln!("{:?} {:?}", next ,tt);
                     if let TokenTree::Punct(p) = &tt {
                         if p.as_char() == '!' {
                             match next {
-                                ExclamationNext::Script => {
-                                    state = ParseState::Script;
-                                }
-                                _ => {
-                                    unimplemented!();
-                                }
+                                ExclamationNext::Script => state = ParseState::Script,
+                                ExclamationNext::Builtin => state = ParseState::Builtin,
+                                ExclamationNext::Generate => state = ParseState::Generate,
                             }
                             continue;
                         }
@@ -326,6 +326,64 @@ pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
                         tt.span().source_text().unwrap_or("".to_string())
                     );
                 }
+                ParseState::Generate => {
+                    // eprintln!("script rule: {:?}", &tt);
+                    assert!(current_rule.is_empty());
+                    if let TokenTree::Group(grp) = &tt {
+                        if grp.delimiter() == Delimiter::Parenthesis {
+                            let mut function_name = String::new();
+
+                            for tok in grp.stream().into_iter() {
+                                function_name.push_str(&tok.to_string());
+                            }
+
+                            builder.add_generator(&rule_name, function_name);
+
+                            state = ParseState::Separator;
+                            continue;
+                        }
+                    }
+
+                    panic!(
+                        "expected proper generate call. expected 'generate!(rust_function_name)' but got \"{}\"",
+                        tt.span().source_text().unwrap_or("".to_string())
+                    );
+                }
+                ParseState::Builtin => {
+                    // eprintln!("builtin rule: {:?}", &tt);
+                    assert!(current_rule.is_empty());
+                    if let TokenTree::Group(grp) = &tt {
+                        if grp.delimiter() == Delimiter::Parenthesis {
+                            let mut grp_contents: Vec<TokenTree> =
+                                grp.stream().into_iter().collect();
+
+                            if grp_contents.len() == 3 {
+                                if let [TokenTree::Ident(module_ident), TokenTree::Punct(sep), TokenTree::Ident(rule_ident)] =
+                                    &grp_contents[0..3]
+                                {
+                                    if sep.as_char() == ',' {
+                                        // eprintln!("adding builtin rule {:?} => {:?} {:?}", rule_name.as_str(), &module_ident, &rule_ident);
+                                        builder.add_rule(
+                                            rule_name.as_str(),
+                                            &[FGrammarIdent::ModuleIdent(
+                                                module_ident.to_string(),
+                                                rule_ident.to_string(),
+                                            )],
+                                        );
+
+                                        state = ParseState::Separator;
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    panic!(
+                        "expected proper builtin call. expected 'builtin!(module, rule)' but got \"{}\"",
+                        tt.span().source_text().unwrap_or("".to_string())
+                    );
+                }
                 ParseState::Separator => {
                     if let TokenTree::Punct(p) = &tt {
                         if p.as_char() == '|' {
@@ -378,7 +436,17 @@ pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
                 panic!("incomplete grammar definition: Expected rule contents after '=>'.");
             }
             ParseState::Script => {
-                panic!("incomplete grammar definition: Expected script contents after '=>'.");
+                panic!("incomplete grammar definition: Expected script contents after 'script!'.");
+            }
+            ParseState::Generate => {
+                panic!(
+                    "incomplete grammar definition: Expected generate contents after 'generate!'."
+                );
+            }
+            ParseState::Builtin => {
+                panic!(
+                    "incomplete grammar definition: Expected builtin contents after 'builtin!'."
+                );
             }
             ParseState::Exclamation(next) => {
                 panic!(

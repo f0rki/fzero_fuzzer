@@ -197,6 +197,6 @@
     ["0123456789"],
     ["<edge-case-signed>"],
     ["<edge-case-unsigned>"],
-    ["<interesting-floats>"],
+    ["<interesting-floats>"]
   ]
 }
