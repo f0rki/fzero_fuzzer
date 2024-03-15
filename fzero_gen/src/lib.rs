@@ -1,6 +1,6 @@
+use hashbrown::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
-use std::collections::{HashMap, HashSet};
+use std::collections::BTreeMap;
 use std::path::Path;
 
 mod builtins;
@@ -33,7 +33,7 @@ pub enum Fragment {
 
     /// A terminal fragment which simply should expand directly to the
     /// contained vector of bytes.
-    Terminal(Vec<u8>),
+    Terminal(usize),
 
     /// A script object, which has associated code.
     Script(Vec<FragmentId>, String),
@@ -55,6 +55,9 @@ pub struct FGrammar {
     /// All types
     fragments: Vec<Fragment>,
 
+    /// list of unique terminals
+    terminals: Vec<Vec<u8>>,
+
     /// Cached fragment identifier for the start node
     entry_points: Vec<(String, FragmentId)>,
 
@@ -71,6 +74,10 @@ pub struct FGrammar {
     /// thus this is by default set to `false`. Feel free to set it to `true` if
     /// you are concerned.
     pub safe_only: bool,
+
+    /// If this is `true`, the output type will be a list of terminal indices, i.e., `Vec<u32>`, instead of a raw output buffer, i.e., `Vec<u8>`. The terminals can then be obtained by calling
+    /// `terminals()` or `get_terminal(idx)`.
+    pub output_terminal_ids: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -92,7 +99,7 @@ pub enum FGrammarRule {
 /// Facilitate incremental building of a grammar.
 #[derive(Debug, Clone, Default)]
 pub struct FGrammarBuilder {
-    rules: BTreeMap<String, FGrammarRule>,
+    rules: HashMap<String, FGrammarRule>,
     entrypoints: Vec<String>,
 }
 
@@ -103,7 +110,7 @@ impl FGrammarBuilder {
     /// A → 'a'
     /// ```
     pub fn add_terminal(&mut self, ident: &str, data: &[u8]) {
-        use std::collections::btree_map::Entry;
+        use hashbrown::hash_map::Entry;
         let ident = ident.to_string();
         match self.rules.entry(ident) {
             Entry::Vacant(entry) => {
@@ -135,7 +142,7 @@ impl FGrammarBuilder {
     /// A → 'a' | 'b' | 'c'
     /// ```
     pub fn add_terminals(&mut self, ident: &str, data: &[&[u8]]) {
-        use std::collections::btree_map::Entry;
+        use hashbrown::hash_map::Entry;
         let ident = ident.to_string();
         let data_vec = data
             .into_iter()
@@ -169,7 +176,7 @@ impl FGrammarBuilder {
     /// A → B C D
     /// ```
     pub fn add_expression(&mut self, ident: &str, rule: &[&str]) {
-        use std::collections::btree_map::Entry;
+        use hashbrown::hash_map::Entry;
         let ident = ident.to_string();
         let frule = rule
             .into_iter()
@@ -202,7 +209,7 @@ impl FGrammarBuilder {
     /// A → B | C | 'term'
     /// ```
     pub fn add_rule(&mut self, ident: &str, rule: &[FGrammarIdent]) {
-        use std::collections::btree_map::Entry;
+        use hashbrown::hash_map::Entry;
         let ident = ident.to_string();
         let frule = rule.to_vec();
         match self.rules.entry(ident) {
@@ -279,6 +286,7 @@ impl FGrammarBuilder {
         // Create a new grammar structure
         let mut ret = FGrammar::default();
         ret.safe_only = false;
+        ret.output_terminal_ids = false;
 
         // Parse the input grammar to resolve all fragment names
         for (non_term, _) in self.rules.iter() {
@@ -332,7 +340,7 @@ impl FGrammarBuilder {
                         for option in js_sub_fragment {
                             let fragment_id = match option {
                                 FGrammarIdent::Data(data) => {
-                                    ret.allocate_fragment(Fragment::Terminal(data.clone()))
+                                    ret.allocate_terminal_fragment(data.as_ref())
                                 }
                                 FGrammarIdent::Ident(nonterm_name) => {
                                     if let Some(&non_terminal) =
@@ -349,7 +357,10 @@ impl FGrammarBuilder {
                                     {
                                         id
                                     } else {
-                                        panic!("got an identifier that cannot be resolved!")
+                                        panic!(
+                                            "got identifier {:?} that cannot be resolved!",
+                                            nonterm_name
+                                        )
                                     }
                                 }
                                 FGrammarIdent::ModuleIdent(module, id) => {
@@ -542,6 +553,29 @@ impl FGrammar {
         fragment_id
     }
 
+    pub fn add_terminal(&mut self, data: &[u8]) -> usize {
+        if let Some(idx) = self.terminals.iter().position(|x| x == data) {
+            idx
+        } else {
+            let l = self.terminals.len();
+            self.terminals.push(data.to_vec());
+            l
+        }
+    }
+
+    /// Allocate a new fragment identifier for a terminal, add the terminal to the list of terminals and add it to the fragment list.
+    pub fn allocate_terminal_fragment(&mut self, data: &[u8]) -> FragmentId {
+        let term_id = self.add_terminal(data);
+        let fragment = Fragment::Terminal(term_id);
+
+        // Get a unique fragment identifier
+        let fragment_id = FragmentId(self.fragments.len());
+        // Store the fragment
+        self.fragments.push(fragment);
+
+        fragment_id
+    }
+
     /// does two passes over all fragments and checks whether they are trivialy non-recursive, i.e.,
     /// they only expand to rules that expand to terminals or they.
     pub fn find_trivial_non_recursives(&mut self) {
@@ -571,10 +605,21 @@ impl FGrammar {
         }
     }
 
+    pub fn reduce_terminals(&mut self) {
+        let mut terminals = vec![];
+        std::mem::swap(&mut self.terminals, &mut terminals);
+
+        for idx in 0..self.fragments.len() {
+            if let Fragment::Terminal(tid) = self.fragments[idx] {
+                self.fragments[idx] = Fragment::Terminal(self.add_terminal(&terminals[tid]));
+            }
+        }
+    }
+
     /// Optimize to remove fragments with non-random effects.
     pub fn optimize(&mut self) {
         // Keeps track of fragment identifiers which resolve to nops
-        let mut nop_fragments = BTreeSet::new();
+        let mut nop_fragments = HashSet::new();
 
         // Track if a optimization had an effect
         let mut changed = true;
@@ -638,11 +683,13 @@ impl FGrammar {
                         {
                             let mut concatenated = vec![];
                             for item in expr.iter().copied() {
-                                if let Fragment::Terminal(data) = &self.fragments[item.0] {
-                                    concatenated.extend_from_slice(data);
+                                if let Fragment::Terminal(term_idx) = self.fragments[item.0] {
+                                    concatenated.extend_from_slice(&self.terminals[term_idx]);
                                 }
                             }
-                            self.fragments[idx] = Fragment::Terminal(concatenated);
+                            let term_idx = self.terminals.len();
+                            self.terminals.push(concatenated);
+                            self.fragments[idx] = Fragment::Terminal(term_idx);
                             changed = true;
                         }
                     }
@@ -660,7 +707,7 @@ impl FGrammar {
         let mut new_fragments = Vec::with_capacity(self.fragments.len());
         // initialize all fragments as unreachable fragments
         new_fragments.resize(self.fragments.len(), Fragment::Unreachable);
-        let mut seen_fragments = BTreeSet::new();
+        let mut seen_fragments = HashSet::new();
         let mut worklist: Vec<FragmentId> = self.entry_points.iter().map(|x| x.1).collect();
 
         // iterate over all fragments and only keep the ones that are reachable
@@ -690,6 +737,8 @@ impl FGrammar {
 
         self.fragments = new_fragments;
 
+        self.reduce_terminals();
+
         self.find_trivial_non_recursives();
     }
 
@@ -698,15 +747,18 @@ impl FGrammar {
         let mut program = String::new();
 
         let mut terminal_list = String::new();
-        let mut seen_terminals = HashSet::new();
-        for fragment in self.fragments.iter() {
-            if let Fragment::Terminal(data) = fragment {
-                let s = String::from_utf8_lossy(data);
-                if !seen_terminals.contains(&s) {
-                    terminal_list += &format!("{:?}, ", s);
-                    seen_terminals.insert(s);
-                }
-            }
+        // let mut seen_terminals = HashSet::new();
+        // for fragment in self.fragments.iter() {
+        //     if let Fragment::Terminal(data) = fragment {
+        //         let s = String::from_utf8_lossy(data);
+        //         if !seen_terminals.contains(&s) {
+        //             terminal_list += &format!("{:?}, ", s);
+        //             seen_terminals.insert(s);
+        //         }
+        //     }
+        // }
+        for terminal in self.terminals.iter() {
+            terminal_list += &format!("&{:?}, ", terminal);
         }
 
         let start = self
@@ -716,6 +768,12 @@ impl FGrammar {
             .1
              .0;
 
+        let outtype = if self.output_terminal_ids {
+            "Vec<u32>"
+        } else {
+            "Vec<u8>"
+        };
+
         program += &format!(
             r#"
 
@@ -723,15 +781,24 @@ pub struct {name};
 
 impl {name} {{
 
-    pub fn terminals() -> &'static [&'static str] {{
-        return &[{terminal_list}];
+    #[inline(always)]
+    pub fn terminals() -> &'static [&'static [u8]] {{
+        &[{terminal_list}]
     }}
 
-    pub fn generate_into(out: &mut Vec<u8>, max_depth: Option<usize>, rng: &mut impl rand::Rng) {{
+    #[inline(always)]
+    pub fn get_terminal<I>(index: I) -> &'static [u8]
+    where I: TryInto<usize>, <I as TryInto<usize>>::Error: std::fmt::Debug
+    {{
+        let index: usize = index.try_into().expect("usize should be bigger than u32!");
+        Self::terminals()[index]
+    }}
+
+    pub fn generate_into(out: &mut {outtype}, max_depth: Option<usize>, rng: &mut impl rand::Rng) {{
         Self::fragment_{start}(0, max_depth.unwrap_or({} as usize), out, rng);
     }}
 
-    pub fn generate_new(max_depth: Option<usize>, rng: &mut impl rand::Rng) -> Vec<u8> {{
+    pub fn generate_new(max_depth: Option<usize>, rng: &mut impl rand::Rng) -> {outtype} {{
         let mut out = Vec::new();
         Self::generate_into(&mut out, max_depth, rng);
         out
@@ -745,11 +812,11 @@ impl {name} {{
             program += &format!(
                 r#"
 
-    pub fn generate_{start_name}_into(out: &mut Vec<u8>, max_depth: Option<usize>, rng: &mut impl rand::Rng) {{
+    pub fn generate_{start_name}_into(out: &mut {outtype}, max_depth: Option<usize>, rng: &mut impl rand::Rng) {{
         Self::fragment_{fragment}(0, max_depth.unwrap_or({} as usize), out, rng);
     }}
     
-    pub fn generate_{start_name}_new(max_depth: Option<usize>, rng: &mut impl rand::Rng) -> Vec<u8> {{
+    pub fn generate_{start_name}_new(max_depth: Option<usize>, rng: &mut impl rand::Rng) -> {outtype} {{
         let mut out = Vec::new();
         Self::fragment_{fragment}(0, max_depth.unwrap_or({} as usize), &mut out, rng);
         out
@@ -767,7 +834,7 @@ impl {name} {{
             }
 
             // Create a new function for this fragment
-            program += &format!("    #[allow(unused)]\nfn fragment_{}(depth: usize, max_depth: usize, buf: &mut Vec<u8>, rng: &mut impl rand::Rng) {{\nuse rand::Rng;\n", id);
+            program += &format!("    #[allow(unused)]\nfn fragment_{}(depth: usize, max_depth: usize, buf: &mut {outtype}, rng: &mut impl rand::Rng) {{\nuse rand::Rng;\n", id);
 
             if !self.skip_recursion_check.contains(&FragmentId(id)) {
                 // Add depth checking to terminate on depth exhaustion
@@ -826,25 +893,33 @@ impl {name} {{
                         );
                     }
                 }
-                Fragment::Terminal(value) => {
+                Fragment::Terminal(term_idx) => {
+                    program += &format!("        /* Self::get_terminal({:?}); */", term_idx);
+
+                    let value = &self.terminals[*term_idx];
                     let as_str = String::from_utf8_lossy(value);
                     if !as_str.contains("*") {
                         program += &format!("        /* {:?} */", as_str);
                     }
-                    /* {:?} */
-                    if value.len() == 1 {
-                        program += &format!("        buf.push({:?});\n", value[0]);
+
+                    if self.output_terminal_ids {
+                        program += &format!("        buf.push({});\n", term_idx);
                     } else {
-                        // Append the terminal value to the output buffer
-                        if self.safe_only {
-                            program += &format!("        buf.extend_from_slice(&{:?});\n", value);
+                        /* {:?} */
+                        if value.len() == 1 {
+                            program += &format!("        buf.push({:?});\n", value[0]);
                         } else {
-                            // For some reason this is faster than
-                            // `extend_from_slice` even though it does the exact
-                            // same thing. This was observed to be over a 4-5x
-                            // speedup in some scenarios.
-                            program += &format!(
-                                r#"
+                            // Append the terminal value to the output buffer
+                            if self.safe_only {
+                                program +=
+                                    &format!("        buf.extend_from_slice(&{:?});\n", value);
+                            } else {
+                                // For some reason this is faster than
+                                // `extend_from_slice` even though it does the exact
+                                // same thing. This was observed to be over a 4-5x
+                                // speedup in some scenarios.
+                                program += &format!(
+                                    r#"
             unsafe {{
                 let old_size = buf.len();
                 let new_size = old_size + {};
@@ -857,10 +932,11 @@ impl {name} {{
                 buf.set_len(new_size);
             }}
     "#,
-                                value.len(),
-                                value,
-                                value.len()
-                            );
+                                    value.len(),
+                                    value,
+                                    value.len()
+                                );
+                            }
                         }
                     }
                 }

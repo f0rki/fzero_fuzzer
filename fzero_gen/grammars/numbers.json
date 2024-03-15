@@ -186,8 +186,6 @@
     ["16"],
     ["42"],
     ["1234"],
-    ["0001234"],
-    ["01234"],
     ["0xdeadbeef"],
     ["0xffffffff"],
     ["0x7fffffff"],
@@ -198,5 +196,6 @@
     ["<edge-case-signed>"],
     ["<edge-case-unsigned>"],
     ["<interesting-floats>"]
-  ]
+  ],
+  "<number_limited>": [["<number-limited>"]]
 }

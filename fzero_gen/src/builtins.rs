@@ -49,6 +49,8 @@ fn extend_and_rename(
     );
 
     let off = gram.fragments.len();
+    let tid_off = gram.terminals.len();
+    gram.terminals.extend(with.terminals.iter().cloned());
     gram.fragments
         .extend(with.fragments.iter().cloned().map(|f| match f {
             Fragment::NonTerminal(f) => {
@@ -56,6 +58,10 @@ fn extend_and_rename(
             }
             Fragment::Expression(f) => {
                 Fragment::Expression(f.into_iter().map(|fid| FragmentId(fid.0 + off)).collect())
+            }
+            Fragment::Terminal(tid) => {
+                // let new_tid = gram.
+                Fragment::Terminal(tid + tid_off)
             }
             _ => f,
         }));

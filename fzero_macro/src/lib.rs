@@ -1,9 +1,8 @@
 use fzero_gen::{FGrammarBuilder, FGrammarIdent};
 use proc_macro::{Delimiter, TokenStream, TokenTree};
 
-#[proc_macro]
-pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
-    let max_depth = 128;
+/// Parse the rust macro grammar definition DSL with the help of a grammar builder.
+fn fzero_parse_grammar_dsl(body: TokenStream) -> (FGrammarBuilder, String) {
     let mut entrypoints = vec![];
     // let mut grammar = JsonGrammar::default();
     let mut builder = FGrammarBuilder::default();
@@ -471,8 +470,29 @@ pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
         builder.add_entrypoint(&entry);
     }
 
-    let gram = builder.build();
+    (builder, name)
+}
 
+/// Create a grammar generator from a DSL that defines the grammar within a rust codebase.
+#[proc_macro]
+pub fn fzero_define_grammar(body: TokenStream) -> TokenStream {
+    let max_depth = 32;
+    let (builder, name) = fzero_parse_grammar_dsl(body);
+    let gram = builder.build();
+    // eprintln!("{}", gram.rust_codegen(&name, max_depth));
+    gram.rust_codegen(&name, max_depth).parse().unwrap()
+}
+
+/// Create a grammar generator from a DSL that defines the grammar within a rust codebase.
+/// However, this grammar generator will use a `Vec<u32>` as output. These are the indices into the
+/// `Generator::terminals()` list of terminal symbols. This is useful if you want to change the way
+/// the buffer is built.
+#[proc_macro]
+pub fn fzero_define_token_grammar(body: TokenStream) -> TokenStream {
+    let max_depth = 32;
+    let (builder, name) = fzero_parse_grammar_dsl(body);
+    let mut gram = builder.build();
+    gram.output_terminal_ids = true;
     // eprintln!("{}", gram.rust_codegen(&name, max_depth));
     gram.rust_codegen(&name, max_depth).parse().unwrap()
 }
